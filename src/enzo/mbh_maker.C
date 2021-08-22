@@ -62,6 +62,7 @@ int mbh_maker(int *nx, int *ny, int *nz, int *size, float *d, float *u,
   double dummy_double[3];
   float dummy_float[3];
   char line[MAX_LINE_LENGTH];
+  //fprintf(stderr, "KH testing namx = %lld. \n", *nmax);
 
   /* Set new particle index to number of created star particles */
 
@@ -147,9 +148,9 @@ int mbh_maker(int *nx, int *ny, int *nz, int *size, float *d, float *u,
 	      return FAIL;
 	    }
 #endif
-
-	    fprintf(stdout, "mbh_maker: A MBH inserted at (%lf,%lf,%lf) with v=(%f,%f,%f), m=%f (d=%f), tc=%f, type=%d\n",
-		    xp[ii], yp[ii], zp[ii], up[ii], vp[ii], wp[ii], mp[ii], d[index], tcp[ii], type[ii]);
+        //KH testing
+	    //fprintf(stdout, "mbh_maker: A MBH inserted at (%lf,%lf,%lf) with v=(%f,%f,%f), m=%f (d=%f), tc=%f, type=%d\n",
+		//    xp[ii], yp[ii], zp[ii], up[ii], vp[ii], wp[ii], mp[ii], d[index], tcp[ii], type[ii]);
 
 	    // increase the counter
 	    ii++;

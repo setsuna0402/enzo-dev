@@ -257,7 +257,16 @@ int Star::CalculateMassAccretion(float &BondiRadius, float &density)
     /* If requested, just fix mdot (e.g. to 1e-4 SolarMass/yr) */
 
     if (MBHAccretion == 3 || MBHAccretion == 13)
-      mdot = MBHAccretionFixedRate / yr_s; 
+    {   // KH 2021 : Set mdot = 0 if time < birthtime or time >= birthtime + lifettime
+        if((time < this->BirthTime) || (time > (this->BirthTime + this->LifeTime))) mdot = 0.0; 
+        else mdot = MBHAccretionFixedRate / yr_s;
+        // fprintf(stderr, "Function = %s, ", __FUNCTION__);
+        // fprintf(stderr, "ID = %lld, ", Identifier);
+        // fprintf(stderr, "Time = %"FSYM", ", time);
+        // fprintf(stderr, "mdot = %"GSYM", ", mdot);
+        // fprintf(stderr, "BirthTime = %"FSYM", LifeTime = %"FSYM", ", BirthTime, LifeTime);
+        // fprintf(stderr, "MBHAccretion = %lld. \n", MBHAccretion); 
+    }
 
     /* If requested, modify (suppress) Bondi-Hoyle formalism 
        by taking vorticity into account using Krumholz et al.(2006); see Eq.(3) */
@@ -359,6 +368,7 @@ int Star::CalculateMassAccretion(float &BondiRadius, float &density)
       const double sigma_SB = 5.67e-5;
 
       if (ComovingCoordinates) {
+    fprintf(stderr, "KH Acc Function = %s, ", __FUNCTION__);
 	CosmologyComputeExpansionFactor(time, &a, &dadt);
 	BoxSize = ComovingBoxSize/HubbleConstantNow*a/(1+InitialRedshift);
       } else
@@ -507,13 +517,25 @@ int Star::CalculateMassAccretion(float &BondiRadius, float &density)
 
     mdot_Edd = 4.0 * PI * GravConst * old_mass * mh /
       max(MBHFeedbackRadiativeEfficiency, 0.1) / sigma_thompson / clight;     
-    if (MBHAccretion < 10 && MBHAccretingMassRatio != BONDI_ACCRETION_CORRECT_NUMERICAL) {
-      mdot = min(mdot, mdot_Edd); 
-    }
+    
+    // KH Turn off this condition.
+    //if (MBHAccretion < 10 && MBHAccretingMassRatio != BONDI_ACCRETION_CORRECT_NUMERICAL) {
+    //  mdot = min(mdot, mdot_Edd); 
+    //}
 
     /* No accretion if the BH is in some low-density and cold cell. */
-    if (density < tiny_number || temperature[index] < 10 || isnan(mdot)) 
-      mdot = 0.0;
+    // if (density < tiny_number || temperature[index] < 10 || isnan(mdot))
+    // {  
+    //   // mdot = 0.0;   // KH just a test
+    //   
+    //   fprintf(stderr, "Function = %s, ", __FUNCTION__);
+    //   fprintf(stderr, "Ignore density and temperature criteria, and show ldensity and temperature of the cell, ");
+    //   fprintf(stderr, "ID = %lld, ", Identifier);
+    //   fprintf(stderr, "mdot = %"GSYM", ", mdot);
+    //   fprintf(stderr, "rho = %"GSYM" g/cm3, ", density);
+    //   fprintf(stderr, "T = %"GSYM" K \n", temperature[index]);
+ 
+    // }
 
     //this->DeltaMass += mdot * (CurrentGrid->dtFixed * TimeUnits);
     
@@ -524,7 +546,15 @@ int Star::CalculateMassAccretion(float &BondiRadius, float &density)
     }
     this->accretion_rate[0] = mdot;
     this->accretion_time[0] = time;
-    
+       
+    // fprintf(stderr, "KH Function = %s, ", __FUNCTION__);
+    // fprintf(stderr, "ID = %lld, ", Identifier);
+    // fprintf(stderr, "mdot = %"GSYM", ", mdot);
+    // fprintf(stderr, "mdot_Edd = %"GSYM", ", mdot_Edd);
+    // fprintf(stderr, "last_accretion_rate = %g, ", last_accretion_rate);
+    // fprintf(stderr, "this->naccretions = %lld, ", this->naccretions); 
+    // fprintf(stderr, "this->accretion_rate[0] = %g, ", this->accretion_rate[0]); 
+    // fprintf(stderr, "this->accretion_time[0] = %g.\n", this->accretion_time[0]); 
     if (mdot > 0.0) {
       fprintf(stdout, "BH Accretion[%"ISYM"]: time = %"FSYM", mdot = %"GSYM" (%"GSYM"/%"GSYM") SolarMass/yr, "
 	      "M_BH = %lf SolarMass, rho = %"GSYM" g/cm3, T = %"GSYM" K, v_rel = %"GSYM" cm/s\n",

@@ -25,7 +25,7 @@
 #include "Grid.h"
 #include "CosmologyParameters.h"
 
-#define DEVCODE 1
+#define DEVCODE 0
 int grid::RadiativeTransferIonization(PhotonPackageEntry **PP, FLOAT *dPi, int cellindex, 
 				      int species, float tau, FLOAT photonrate, 
 				      FLOAT *excessrate, float geo_correction,
@@ -36,16 +36,19 @@ int grid::RadiativeTransferIonization(PhotonPackageEntry **PP, FLOAT *dPi, int c
   dPi[species] = (*PP)->Photons*(1-expf(-tau));
 #else
   // at most use all photons for photo-ionizations
-  if (tau > 2.e1) //Completely Optically Thick
+  if (tau > 29.9) //Completely Optically Thick  original: 20
     dPi[species] = (1.0+BFLOAT_EPSILON) * (*PP)->Photons;
   else if (tau > 1.e-4) //Exponential decline in photons
-    dPi[species] = min((*PP)->Photons*(1-expf(-tau)), (*PP)->Photons);
+    dPi[species] = min((*PP)->Photons*(-expm1(-tau)), (*PP)->Photons);
+    // dPi[species] = min((*PP)->Photons*(1-expf(-tau)), (*PP)->Photons);
   else //Optically thin case
     dPi[species] = min((*PP)->Photons*tau, (*PP)->Photons);
 #endif
   
   //dP1 is the number of absorptions
   dP1 = dPi[species] * geo_correction;
+  // KH 2021/7/30 : try to use the whole photonpackage to ionising  
+  // dP1 = (*PP)->Photons * geo_correction;
 
   // contributions to the photoionization rate is over whole timestep
   // Units = 1/(LengthUnits^3)*1/CodeTime

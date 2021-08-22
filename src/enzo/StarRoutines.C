@@ -533,6 +533,13 @@ void Star::StarListToBuffer(StarBuffer *&result, int n)
   int i, count = 0;
   Star *tmp = this;
   while (tmp != NULL) {
+    // fprintf(stderr, "KH Function = %s, ", __FUNCTION__);
+    // fprintf(stderr, "tmp->pos[0] = %"PSYM", ", tmp->pos[0]);
+    // fprintf(stderr, "tmp->pos[1] = %"PSYM", ", tmp->pos[1]);
+    // fprintf(stderr, "tmp->pos[2] = %"PSYM",", tmp->pos[2]);
+    // fprintf(stderr, "pointer_result = %p ", result);
+    // fprintf(stderr, "pointer_this = %p ", tmp);
+    // fprintf(stderr, "pointer_tmp->NextStar = %p \n", tmp->NextStar);
     for (i = 0; i < MAX_DIMENSION; i++) {
       result[count].pos[i] = tmp->pos[i];
       result[count].vel[i] = tmp->vel[i];

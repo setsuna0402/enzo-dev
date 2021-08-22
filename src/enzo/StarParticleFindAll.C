@@ -142,22 +142,78 @@ int StarParticleFindAll(LevelHierarchyEntry *LevelArray[], Star *&AllStars)
     /* If any, gather all shining particles */
 
     if (TotalNumberOfStars > 0) {
-
-      if (TotalNumberOfStars > recvBufferSize) {
-        recvBufferSize = ceil_log2(TotalNumberOfStars);
+      if (recvBufferSize > 2 * ceil_log2(TotalNumberOfStars))
+      {// KH 28/4/2021
+       // Avoiding recvBuffer occurs memoeries which exceed 2 times of the powers of 2 buffer space which has minimum space to contain TotalNumberOfStars.
         delete [] recvBuffer;
+        recvBufferSize = 0;
+      }
+      if (TotalNumberOfStars > recvBufferSize) {
+        // KH 28/4/2021
+        if (recvBufferSize > 0)
+        {
+            recvBufferSize = ceil_log2(TotalNumberOfStars);
+            delete [] recvBuffer;
+        }
+        else recvBufferSize = ceil_log2(TotalNumberOfStars);
         recvBuffer = new StarBuffer[recvBufferSize];
       }
-      if (LocalNumberOfStars > sendBufferSize) {
-        sendBufferSize = ceil_log2(LocalNumberOfStars);
+      if ((LocalNumberOfStars > 0) && (sendBufferSize > 2 * ceil_log2(LocalNumberOfStars)))
+      {// KH 28/4/2021
+       // Avoiding sendBuffer occurs memoeries which exceed 2 times of the powers of 2 buffer space which has minimum space to contain LocalNumberOfStars.
         delete [] sendBuffer;
-        sendBuffer = new StarBuffer[sendBufferSize];
+        sendBufferSize = 0;
       }
+      if (LocalNumberOfStars > sendBufferSize) 
+      { // KH 28/4/2021
+        size_t check_sendBuffer = sendBufferSize;
+        if(sendBufferSize > 0)
+        {
+            sendBufferSize = ceil_log2(LocalNumberOfStars);
+            delete [] sendBuffer;
+        }
+        else sendBufferSize = ceil_log2(LocalNumberOfStars); 
+        sendBuffer = new StarBuffer[sendBufferSize];
+        // if (check_sendBuffer == 0)
+        // {   // KH debug
+        //     fprintf(stderr, "Function = %s, ", __FUNCTION__);
+        //     fprintf(stderr, "check_sendBuffer = %lld, ", check_sendBuffer);
+        //     fprintf(stderr, "LocalNumberOfStars = %lld, ", LocalNumberOfStars);
+        //     fprintf(stderr, "sendBufferSize = %lld, ", sendBufferSize);
+        //     fprintf(stderr, "pointer_sendBuffer = %p \n", sendBuffer);
+        //     
+        // }
+      }
+      /*
+      if (sendBuffer == NULL) {fprintf(stderr, "No idea what is happening \n");}
+      else 
+      {
+         fprintf(stderr, "Function = %s, ", __FUNCTION__);
+         fprintf(stderr, "LocalNumberOfStars = %lld, ", LocalNumberOfStars);
+         fprintf(stderr, "sendBufferSize = %lld, ", sendBufferSize);
+         fprintf(stderr, "pointer_sendBuffer = %p \n", sendBuffer);
 
+      }
+      */
       if (LocalNumberOfStars > 0)
-        LocalStars->StarListToBuffer(sendBuffer, LocalNumberOfStars);
+      {
+          //fprintf(stderr, "Function = %s, ", __FUNCTION__);
+          //fprintf(stderr, "LocalNumberOfStars = %lld, ", LocalNumberOfStars);
+          //fprintf(stderr, "sendBufferSize = %lld, ", sendBufferSize);
+          //fprintf(stderr, "pointer_sendBuffer = %p \n", sendBuffer);
+          LocalStars->StarListToBuffer(sendBuffer, LocalNumberOfStars);
+      }
       else
+      { // KH modify 28/4/2021
+        // Due to No local star, don't need sendbuffer.
+        // release memories and initialise sendBufferSize.
+        if(sendBufferSize > 0)
+        {
+            delete [] sendBuffer;
+            sendBufferSize = 0;
+        }
         sendBuffer = NULL;
+      }
 
       /* Share all data with all processors */
 

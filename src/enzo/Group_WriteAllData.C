@@ -172,7 +172,7 @@ int Group_WriteAllData(char *basename, int filenumber,
   int GridJD = 1;
   int GridKD = 1;
   int GridLD = 1;
- 
+
   /* If this is an interpolated time step, then temporary replace  the time
      in MetaData.  Note:  Modified 6 Feb 2006 to fix interpolated  data outputs. */
 
@@ -626,9 +626,7 @@ int Group_WriteAllData(char *basename, int filenumber,
   CommunicationBarrier();
  
 //  Start I/O timing
- 
 #ifdef USE_HDF5_OUTPUT_BUFFERING
-
   memory_increment = 1024*1024;
   dump_flag = 1;
 
@@ -642,13 +640,11 @@ int Group_WriteAllData(char *basename, int filenumber,
     if( file_id == h5_error ){my_exit(EXIT_FAILURE);}
 
 #else
-
   file_id = H5Fcreate(groupfilename, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
   //  h5_status = H5Fclose(file_id);
   //    if( h5_status == h5_error ){my_exit(EXIT_FAILURE);}
 
 #endif
-
   // WS: Output forcing spectrum
   if (MyProcessorNumber == ROOT_PROCESSOR) {
     if (DrivenFlowProfile) {
@@ -673,7 +669,6 @@ int Group_WriteAllData(char *basename, int filenumber,
     }
   } 
 
- 
   // Set MetaData.BoundaryConditionName
  
   if (MetaData.BoundaryConditionName != NULL)
@@ -715,7 +710,6 @@ int Group_WriteAllData(char *basename, int filenumber,
 #endif		 
 
   // Output TopGrid data
- 
   if (MyProcessorNumber == ROOT_PROCESSOR) {
     if ((fptr = fopen(name, "w")) == NULL) 
       ENZO_VFAIL("Error opening output file %s\n", name)
@@ -734,7 +728,6 @@ int Group_WriteAllData(char *basename, int filenumber,
 
  
   // Output Boundary condition info
- 
   if (MyProcessorNumber == ROOT_PROCESSOR) {
     if ((fptr = fopen(MetaData.BoundaryConditionName, "w")) == NULL) 
       ENZO_VFAIL("Error opening boundary condition file: %s\n",
@@ -772,7 +765,6 @@ int Group_WriteAllData(char *basename, int filenumber,
  
   /* Combine the top level grids into a single grid for output
      (TempTopGrid is the top of an entirely new hierarchy). */
- 
   int level;
   HierarchyEntry *TempTopGrid;
   CommunicationCombineGrids(TopGrid, &TempTopGrid, WriteTime, CheckpointDump);
@@ -780,7 +772,6 @@ int Group_WriteAllData(char *basename, int filenumber,
   LevelHierarchyEntry *LevelArray[MAX_DEPTH_OF_HIERARCHY];
   for (level = 0; level < MAX_DEPTH_OF_HIERARCHY; level++)
     LevelArray[level] = NULL;
-
 #ifndef FAST_SIB
     if (VelAnyl==1 || BAnyl==1) {
       AddLevel(LevelArray, TempTopGrid, 0);
@@ -795,7 +786,6 @@ int Group_WriteAllData(char *basename, int filenumber,
 #endif
   
   // Output Data Hierarchy
-
   if (MyProcessorNumber == ROOT_PROCESSOR) {
 
     if( HierarchyFileOutputFormat % 2 == 0 ) {
@@ -807,7 +797,6 @@ int Group_WriteAllData(char *basename, int filenumber,
       if ((fptr = fopen(hierarchyname, "w")) == NULL) 
 	ENZO_VFAIL("Error opening hierarchy file %s\n", hierarchyname);
   }
-
   /* Clean-up LevelArray */
 
   if (LevelArray[0] != NULL) {
@@ -819,7 +808,6 @@ int Group_WriteAllData(char *basename, int filenumber,
 	LevelArray[level] = Temp;
       } // ENDWHILE
   } // ENDIF
-
   if (Group_WriteDataHierarchy(fptr, MetaData, TempTopGrid,
             gridbasename, GridID, WriteTime, file_id, CheckpointDump) == FAIL)
     ENZO_FAIL("Error in Group_WriteDataHierarchy");
@@ -843,7 +831,6 @@ int Group_WriteAllData(char *basename, int filenumber,
     writeScalarAttribute(metadata_group, HDF5_PREC, "Time", &MetaData.Time);
   }
     H5Gclose(metadata_group);
-
   // At this point all the grid data has been written
 
   h5_status = H5Fclose(file_id);
@@ -914,6 +901,7 @@ int Group_WriteAllData(char *basename, int filenumber,
  
   if (WriteStarParticleData(fptr, MetaData) == FAIL)
     ENZO_FAIL("Error in WriteStarParticleData");
+
  
   // Output MBH particle data
   
@@ -923,7 +911,14 @@ int Group_WriteAllData(char *basename, int filenumber,
     if ((MBHfptr = fopen(MBHParticleIOFilename, "a")) == NULL) {
       ENZO_VFAIL("Error opening file %s\n", MBHParticleIOFilename)
     }
-    
+
+    // KH modification 8/5/2021
+    // MBHParticleIOTemp is static array declares in global_data.h (double MBHParticleIOTemp[30][5+MAX_DIMENSION];)
+    // Therefor, if the number of MBH particle > 30, mbh_particle_io_count will be larger than 30 and causes segmentation fault (wrong index.)
+    // Current solution : bypassing this process.
+    // For future, MBHParticleIOTemp should become a dynamical array. (Need MPI to synchronisation)
+    // WriteAllData.C and StarParticleFinalize.C also read and dump MBHParticleIOTemp. 
+#ifdef UNUSED 
     // printing order: time, regular star count, MBH id, MBH mass, MBH angular momentum
     for (int i = 0; i < G_TotalNumberOfStars; i++) { 
       fprintf(MBHfptr, " %"FSYM"  %"ISYM"  %"ISYM"  %lf  %"FSYM"  %"FSYM"  %"FSYM"  %lf\n", 
@@ -932,7 +927,7 @@ int Group_WriteAllData(char *basename, int filenumber,
 	      (float)(MBHParticleIOTemp[i][3]), (float)(MBHParticleIOTemp[i][4]),
 	      MBHParticleIOTemp[i][5]);
     }
-    
+#endif /* UNUSED */
     fclose(MBHfptr);
     
   }

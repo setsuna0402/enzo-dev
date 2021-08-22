@@ -34,7 +34,7 @@ int grid::RadiativeTransferXRays(PhotonPackageEntry **PP, FLOAT *dPXray, int cel
   float dP1 = 0.0;
 	
   // at most use all photons for photo-ionizations
-  if (tau > 2.e1) 
+  if (tau > 29.9)   // original value 2.e1 
     dPXray[species] = (1.0+BFLOAT_EPSILON) * (*PP)->Photons;
   else if (tau > 1.e-4) 
     dPXray[species] = min((*PP)->Photons*(1-expf(-tau)), (*PP)->Photons);
@@ -42,6 +42,8 @@ int grid::RadiativeTransferXRays(PhotonPackageEntry **PP, FLOAT *dPXray, int cel
     dPXray[species] = min((*PP)->Photons*tau, (*PP)->Photons);
   
   dP1 = dPXray[species] * geo_correction;
+  // KH 2021/7/30 : try to use the whole photonpackage to ionising
+  // dP1 = (*PP)->Photons * geo_correction;
 
   // contributions to the photoionization rate is over whole timestep
   // units are (1/LengthUnits^3)*(1/CodeTime)
@@ -79,7 +81,7 @@ int grid::RadiativeTransferComptonHeating(PhotonPackageEntry **PP, FLOAT *dPXray
   tau = dN*xray_sigma;
   
   // at most use all photons for Compton scattering
-  if (tau > 2.e1) 
+  if (tau > 29.9)   // original value 2.e1 
     dPXray[COMPTON] = (1.0+BFLOAT_EPSILON) * (*PP)->Photons;
   else if (tau > 1.e-4) 
     dPXray[COMPTON] = min((*PP)->Photons*(1-expf(-tau)), (*PP)->Photons);

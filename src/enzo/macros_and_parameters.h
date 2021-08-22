@@ -53,7 +53,7 @@
 
 #define MAX_DEPTH_OF_HIERARCHY             50
 
-#define MAX_LINE_LENGTH                   512
+#define MAX_LINE_LENGTH                   4096
 
 #define MAX_NAME_LENGTH                   512
 
@@ -96,7 +96,7 @@
 
 #define MAX_POTENTIAL_ITERATIONS            80
 
-#define MAX_ENERGY_BINS                    10
+#define MAX_ENERGY_BINS                    20
 
 #define MAX_ACTIVE_PARTICLE_TYPES          30
 

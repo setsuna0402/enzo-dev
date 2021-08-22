@@ -135,7 +135,7 @@ int WriteAllData(char *basename, int filenumber,
   int GridJD = 1;
   int GridKD = 1;
   int GridLD = 1;
- 
+
   /* If this is an interpolated time step, then temporary replace  the time
      in MetaData.  Note:  Modified 6 Feb 2006 to fix interpolated  data outputs. */
 
@@ -478,7 +478,6 @@ int WriteAllData(char *basename, int filenumber,
 #endif		 
 
   // Output TopGrid data
- 
   if (MyProcessorNumber == ROOT_PROCESSOR) {
     if ((fptr = fopen(name, "w")) == NULL) {
       ENZO_VFAIL("Error opening output file %s\n", name)
@@ -492,7 +491,6 @@ int WriteAllData(char *basename, int filenumber,
     fclose(fptr);
   
   }
- 
   // Output Boundary condition info
  
   if (MyProcessorNumber == ROOT_PROCESSOR) {
@@ -574,7 +572,13 @@ int WriteAllData(char *basename, int filenumber,
     if ((MBHfptr = fopen(MBHParticleIOFilename, "a")) == NULL) {
       ENZO_VFAIL("Error opening file %s\n", MBHParticleIOFilename)
 	}
-    
+    // KH modification 8/5/2021
+    // MBHParticleIOTemp is static array declares in global_data.h (double MBHParticleIOTemp[30][5+MAX_DIMENSION];)
+    // Therefor, if the number of MBH particle > 30, mbh_particle_io_count will be larger than 30 and causes segmentation fault (wrong index.)
+    // Current solution : bypassing this process.
+    // For future, MBHParticleIOTemp should become a dynamical array. (Need MPI to synchronisation)
+    // Group_WriteAllData.C and StarParticleFinalize.C also read and dump MBHParticleIOTemp. 
+#ifdef UNUSED    
     // printing order: time, regular star count, MBH id, MBH mass, MBH angular momentum
     for (int i = 0; i < G_TotalNumberOfStars; i++) { 
       fprintf(MBHfptr, " %"FSYM"  %"ISYM"  %"ISYM"  %lf  %"FSYM"  %"FSYM"  %"FSYM"  %lf\n", 
@@ -583,7 +587,7 @@ int WriteAllData(char *basename, int filenumber,
 	      (float)(MBHParticleIOTemp[i][3]), (float)(MBHParticleIOTemp[i][4]),
 	      MBHParticleIOTemp[i][5]);
     }
-    
+#endif /* UNUSED */    
     fclose(MBHfptr);
     
   }
@@ -699,7 +703,6 @@ int WriteAllData(char *basename, int filenumber,
     fprintf(sptr, "DATASET WRITTEN %s %8"ISYM" %18.16e\n", name, MetaData.CycleNumber, MetaData.Time);
     fclose(sptr);
   }
- 
   return SUCCESS;
 }
  

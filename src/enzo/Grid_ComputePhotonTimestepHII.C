@@ -152,11 +152,16 @@ float grid::ComputePhotonTimestepHII(float DensityUnits, float LengthUnits,
 	    kr2 = RateData.k2[tidx] + (logtem - t1) * 
 	      (RateData.k2[tidx+1] - RateData.k2[tidx]) / tdef;
 	  }
-
+/*
 	  HIIdot = a6inv *
 	    (kr1 * BaryonField[HINum][index] * BaryonField[DeNum][index] -
 	     kr2 * BaryonField[HIINum][index] * BaryonField[DeNum][index]) +
 	    a3inv * BaryonField[HINum][index] * BaryonField[kphHINum][index];
+*/
+	  HIIdot = a3inv *
+	    (kr1 * BaryonField[HINum ][index] * BaryonField[DeNum][index] -
+	     kr2 * BaryonField[HIINum][index] * BaryonField[DeNum][index]) +
+	     BaryonField[HINum][index] * BaryonField[kphHINum][index];
 
 	  alldt[index] = MAX_CHANGE * BaryonField[HIINum][index] / HIIdot;
 

@@ -106,12 +106,11 @@ int Star::Accrete(void)
   /* Keep the last accretion_rate for future use */
 
   if (n > 0)  last_accretion_rate = accretion_rate[n-1]; 
-
-  fprintf(stdout, "star::Accrete:  last_accretion_rate = %"GOUTSYM
-	  " SolarMass/yr, time = %"GOUTSYM", "
-	  "accretion_time[0] = %"GOUTSYM", this_dt = %"GOUTSYM
-	  ", DeltaMass = %"GOUTSYM", Mass = %lf\n",
-	  last_accretion_rate*yr_s, time, accretion_time[0], this_dt, DeltaMass, Mass);
+   fprintf(stdout, "star::Accrete:  last_accretion_rate = %"GOUTSYM
+ 	  " SolarMass/yr, time = %"GOUTSYM", "
+ 	  "accretion_time[0] = %"GOUTSYM", this_dt = %"GOUTSYM
+ 	  ", DeltaMass = %"GOUTSYM", Mass = %lf\n",
+ 	  last_accretion_rate*yr_s, time, accretion_time[0], this_dt, DeltaMass, Mass);
 
   /* Remove these entries in the accretion table */
 
@@ -136,6 +135,11 @@ int Star::Accrete(void)
     accretion_rate = NULL;
     accretion_time = NULL;
   }
+    // fprintf(stderr, "KH Function = %s, ", __FUNCTION__);
+    // fprintf(stderr, "naccretions = %d, ", naccretions); 
+    // fprintf(stderr, "last_accretion_rate = %g, ", last_accretion_rate); 
+    // fprintf(stderr, "pointer_accretions_rate = %p, ", accretion_rate); 
+    // fprintf(stderr, "pointer_accretions_time = %p.\n", accretion_time);
   
   return SUCCESS;
 }

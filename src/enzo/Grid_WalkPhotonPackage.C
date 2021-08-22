@@ -41,7 +41,7 @@
 #define MAX_HEALPIX_LEVEL 29
 #define MAX_COLUMN_DENSITY 1e25
 #define MIN_TAU_IFRONT 0.1
-#define TAU_DELETE_PHOTON 10.0
+#define TAU_DELETE_PHOTON 29.9        // Original value = 10.0
 #define GEO_CORRECTION
 #define H_SPECIES           3         //Includes HI, HeI, HeII
 #define ALLSPECIES          6         //includes HI, HeI, HeII, H2I, H2II and HM
@@ -52,7 +52,7 @@
 #define HIIField            4
 #define HMField             5
 #define H2IIField           6
-
+#define Threshold_TAU       50.0      // if total physical tau > this threshold, adopt approximation of probabilistic method
 int SplitPhotonPackage(PhotonPackageEntry *PP);
 FLOAT FindCrossSection(int type, float energy);
 float ReturnValuesFromSpectrumTable(float ColumnDensity, float dColumnDensity, int mode);
@@ -63,6 +63,8 @@ static void ResetdPi(FLOAT *dPi);
 int GetUnits(float *DensityUnits, float *LengthUnits,
 	     float *TemperatureUnits, float *TimeUnits,
 	     float *VelocityUnits, FLOAT Time);
+
+//int CosmologyComputeExpansionFactor(FLOAT time, FLOAT *a, FLOAT *dadt);
 
 int grid::WalkPhotonPackage(PhotonPackageEntry **PP, 
 			    grid **MoveToGrid, grid *ParentGrid, grid *CurrentGrid, 
@@ -98,6 +100,32 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
   double dir_vec[3], u[3];
   static int secondary_flag = 1, compton_flag = 1;
   static int photoncounter = 0;
+
+  // KH 2021/7/20
+  // Applying the probabilistic method (Bolton_2004)
+  // 1: HI 2: HeI 3: HeII
+  double phys_tau[3] = {0.0, 0.0, 0.0};    // physical_tau = density * cross_section * distance
+  double original_absorb_prob[3] = {0.0, 0.0, 0.0};  // original_absorption_probability = 1 - exp(-tau)
+  double original_alive_prob[3]  = {1.0, 1.0, 1.0};  // original_non_absorption_probability = exp(-tau)
+  double absorb_prob[3] = {0.0, 0.0, 0.0};           // absorption probability based on the probabilistic method
+  double normal_factor  = 0.0;                       // Normalisation factor
+  double phys_tau_total = 0.0;                       // tau_total = sum(phys_tau)
+  double effect_tau[3]  = {0.0, 0.0, 0.0};           // Effective optical depth
+  double max_tau        = 0.0;                       // Maximum vale of physical tau
+  FLOAT  phys_cell_volume = 0.0; 
+  // KH 2021/8/12
+  // Recombination rate for HII HeII HeIII (cm^3/s) at T=15000 K (Avery 2009)
+  const float alpha_recombination[3] = {3.068916e-13, 3.510251e-13, 1.641553e-12}; 
+  FLOAT thisDensity_Ion = 0.0, thisDensity_electron = 0.0, recombination_threshold = 0.0;
+  FLOAT Ion_fraction = 1.0;
+  // KH 2021/8/12
+  // Need expansion factor (a), copy from grid::ComputePhotonTimestepHII
+  // FLOAT a = 1.0, dadt;
+  // if (ComovingCoordinates) CosmologyComputeExpansionFactor(Time+0.5*dtFixed, &a, &dadt); 
+  // float afloat = float(a);
+  // float a3inv = 1.0/(afloat*afloat*afloat);
+  // float a6inv = a3inv * a3inv; 
+ 
 
   /* Check for early termination */
 
@@ -183,10 +211,16 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
     }
 
     f[dim] = CellLeftEdge[dim][g[dim]];
-
+    
+    //KH 2021/08/06: Directly compare a small floating point variable with another???
     // On cell boundaries, the index will change in negative directions
+    // Original Enzo code
+    /*
     if (r[dim] == f[dim])
       g[dim] += (u_sign[dim]-1)/2;
+    */
+    //KH modification
+    if(abs(r[dim] - f[dim]) < PFLOAT_EPSILON) g[dim] += (u_sign[dim]-1)/2;
 
   }
 
@@ -299,6 +333,11 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
 		       BaryonField[HIINum],                                 //HII  = 4
 		       (MultiSpecies > 1) ? BaryonField[HMNum]   : NULL,    //HM   = 5
 		       (MultiSpecies > 1) ? BaryonField[H2IINum] : NULL};   //H2II = 6
+  // KH 2021/8/12
+  // Consider recombination, so need ionised element
+  float *Ion_fields[3] = {BaryonField[HIINum  ],    // HII   = 0
+                          BaryonField[HeIINum ],    // HeII  = 1
+                          BaryonField[HeIIINum] };   // HeIII = 2
 
   /* Pre-compute some quantities to speed things up */
 
@@ -577,28 +616,263 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
     case iHI:
     case iHeI:
     case iHeII:
-      dP = dN = tau = taua = 0.0;
-      ResetdPi(dPi);
-      /* Loop over absorbers - type = 0 or 1 or 2 */
-      for (i = 0; i <= type; i++) {
-	thisDensity = PopulationFractions[i] * fields[i][index] * 
-	  ConvertToProperNumberDensity; //[cm^-3] for species i
-	taua = thisDensity * ddr * sigma[i];  //in cgs
-      if(FAIL == RadiativeTransferIonization(PP, dPi, index, i, taua, factor1, 
-					     ExcessEnergyfactor, slice_factor2, kphNum, 
-					     gammaNum))
-	{
-	  fprintf(stderr, "Failed to calculate the ionizing radiation");
-	  return FAIL;
-	}
-      // Exit the loop if everything's been absorbed
-      if (taua > 20.0) break;
-	
-    } 
-
-    for (i = 0; i <= type; i++) dP += dPi[i];
-    (*PP)->ColumnDensity += thisDensity * ddr * LengthUnits; //in cgs
-    break;
+        dP = dN = tau = taua = 0.0;
+        ResetdPi(dPi);
+        // KH 2021/7/20
+        // Applying the probabilistic method (Bolton_2004)
+        // 1: HI 2: HeI 3: HeII
+        for (i = 0; i < 3; i++) phys_tau[i] = 0.0;  // physical_tau = density * cross_section * distance
+        for (i = 0; i < 3; i++) original_absorb_prob[i] = 0.0;  // original_absorption_probability = 1 - exp(-tau)
+        for (i = 0; i < 3; i++) original_alive_prob[i]  = 1.0;  // original_transmission_probability = exp(-tau)
+        for (i = 0; i < 3; i++) absorb_prob[i] = 0.0;           // absorption probability based on the probabilistic method
+        for (i = 0; i < 3; i++) effect_tau[i] = 0.0;            // Effective optical depth
+        normal_factor  = 0.0;                        // Normalisation factor
+        phys_tau_total = 0.0;                        // tau_total = sum(phys_tau)
+        max_tau        = 0.0;                       // Maximum vale of physical tau
+        // const double Threshold_TAU  = 50.0;                // if total physical tau > this threshold, adopt approximation of probabilistic method
+        phys_cell_volume = CellVolume * POW(LengthUnits, 3);     //  in cgs^3.0  need double check!
+        /* Loop over absorbers - type = 0 or 1 or 2 */
+        for (i = 0; i <= type; i++) {
+	        thisDensity = PopulationFractions[i] * fields[i][index] * 
+	        ConvertToProperNumberDensity; //[cm^-3] for species i
+            thisDensity_Ion = PopulationFractions[i] * Ion_fields[i][index] * 
+            ConvertToProperNumberDensity; 
+            // Electron density is mass desntiy. 
+            // Enzo website : in order to convert the electron density to cgs
+            // it must be multiplied by the code density conversion factor 
+            // and then (m_e/m_p)
+	        thisDensity_electron = BaryonField[DeNum][index] *
+            ConvertToProperNumberDensity;
+            recombination_threshold = thisDensity + thisDensity_Ion * thisDensity_electron *
+                alpha_recombination[i] * dtPhoton  * TimeUnits;                     
+            Ion_fraction = fields[i][index] / (fields[i][index] + Ion_fields[i][index]);
+            phys_tau[i] = max(0.0, thisDensity * ddr * sigma[i]);  //in cgs
+            //phys_tau[i] = max(0.0, recombination_threshold * ddr * sigma[i]);  //in cgs
+            /*
+            fprintf(stderr, "KH photon check!");
+            fprintf(stderr, "(*PP)->Photons = %g ", (*PP)->Photons);
+            fprintf(stderr, "slice_factor2 = %g ", slice_factor2);
+            fprintf(stderr, "thisDensity = %g ", thisDensity);
+            fprintf(stderr, "phys_cell_volume = %g ", phys_cell_volume);
+            fprintf(stderr, "before phys_tau[%lld] = %g \n", i, phys_tau[i]);
+            */  
+            // If the number of photon is higher than the number of HI/HeI/HeII, try to keep the conservation of photon.
+            // The original routine will overkill the photon when tau is large and Nphoton > NHI/NHeI/NHeII
+            // when Nphoton/NHI = 1.000000002, the maximun possible tau is around 20.
+            // In RadiativeTransferIonization, tau = 20 is the condition for complete absorption. 
+            // MAX_TAU = - ln(1-NHI/P) log1p(x) = ln(1+x)
+            // Unit of (*PP)->Photons :  number_of_photon / pow(LengthUnits,3)   (#)
+            // if((*PP)->Photons * slice_factor2 * pow(LengthUnits,3) > (0.2 * thisDensity * phys_cell_volume)) 
+            // if((phys_tau[i] > 1.0) && ((*PP)->Photons * slice_factor2 > (thisDensity * CellVolume / (1.0 * RaysPerCell)))) 
+            // KH 2021/08/13 : Consider recombination effect  
+             if((Ion_fraction > 0.1) &&
+               (((*PP)->Photons * slice_factor2) > 
+                (recombination_threshold  * CellVolume / (1.0 * RaysPerCell)))) {
+                /*
+                fprintf(stderr, "KH photon check!");
+                fprintf(stderr, "(*PP)->Photons = %g ", (*PP)->Photons);
+                fprintf(stderr, "slice_factor2 = %g ", slice_factor2);
+                fprintf(stderr, "thisDensity = %g ", thisDensity);
+                fprintf(stderr, "phys_cell_volume = %g ", phys_cell_volume);
+                fprintf(stderr, "before phys_tau[%lld] = %g ", i, phys_tau[i]);
+                */
+                //phys_tau[i] = min(phys_tau[i], 
+                //            (-1.0 * log1p(-1.0 * (thisDensity * CellVolume / (1.0 * RaysPerCell)) / 
+                //                           ((*PP)->Photons * slice_factor2 ))));
+                phys_tau[i] = min(phys_tau[i], 
+                (-1.0 * log1p(-1.0 * (recombination_threshold * CellVolume / (1.0 * RaysPerCell)) / 
+                 ((*PP)->Photons * slice_factor2 ))));
+                // fprintf(stderr, "after phys_tau[%lld] = %g \n", i, phys_tau[i]);
+            }
+            phys_tau_total += phys_tau[i];
+        }
+        // If the total optical depth is small, use the original enzo method 
+        if ((phys_tau_total < 3.0e-10) || (type == iHI)) {
+            /* Loop over absorbers - type = 0 or 1 or 2 */
+            for (i = 0; i <= type; i++) {
+                taua = (float) phys_tau[i];
+                if(FAIL == RadiativeTransferIonization(PP, dPi, index, i, taua, factor1, 
+                             ExcessEnergyfactor, slice_factor2, kphNum, 
+                             gammaNum)){    
+                    fprintf(stderr, "Failed to calculate the ionizing radiation");
+                    return FAIL;
+                }  
+            }
+        }
+        // if total optical depth isn't small, use probabilistic method 
+        else if (phys_tau_total < Threshold_TAU) {
+            for (i = 0; i <= type; i++) {
+                //original_absorb_prob[i] = 1.0 - exp(-1.0 * phys_tau[i]);
+                original_absorb_prob[i] = abs(expm1(-1.0 * phys_tau[i]));  //  expm1(x) = exp(x) - 1
+                original_alive_prob[i]  =     exp  (-1.0 * phys_tau[i]) ;
+            }
+            normal_factor  = original_absorb_prob[0] * original_alive_prob[1] * original_alive_prob[2];
+            normal_factor += original_alive_prob[0] * original_absorb_prob[1] * original_alive_prob[2];
+            if (type == iHeII) {
+                normal_factor += original_alive_prob[0] * original_alive_prob[1] * original_absorb_prob[2];
+            }
+            // normal_factor /= abs(expm1(-1.0 * phys_tau_total));
+            
+            absorb_prob[0] = original_absorb_prob[0] * original_alive_prob[1] * original_alive_prob[2] *
+                             abs(expm1(-1.0 * phys_tau_total)) / normal_factor ;
+            absorb_prob[0] = min(0.9999999999999, absorb_prob[0]);  // Avoid probability become zero.
+            absorb_prob[1] = original_alive_prob[0] * original_absorb_prob[1] * original_alive_prob[2] * 
+                             abs(expm1(-1.0 * phys_tau_total)) / normal_factor ;
+            absorb_prob[1] = min(0.9999999999999, absorb_prob[1]);  // Avoid probability become zero.
+            if (type == iHeII) {
+            absorb_prob[2] = original_alive_prob[0] * original_alive_prob[1] * original_absorb_prob[2] * 
+                             abs(expm1(-1.0 * phys_tau_total)) / normal_factor ;
+            absorb_prob[2] = min(0.9999999999999, absorb_prob[2]);  // Avoid probability become zero.
+            }
+            for (i = 0; i <= type; i++) {
+                effect_tau[i] = max(0.0, -1.0 * log1p(-1.0 * absorb_prob[i]));    // log1p(x) = ln(1+x)
+                if(isnan(effect_tau[i])){
+                    fprintf(stderr, "NAN! ");
+                    fprintf(stderr, "absorb_prob[%lld] = %g \n", i, absorb_prob[i]);
+                    if((*PP)->Photons * slice_factor2 > (thisDensity * CellVolume / ((1.0 * RaysPerCell))))
+                    {fprintf(stderr, "save the world!   ");}
+                    fprintf(stderr, "absorb_prob[%lld] = %g ", i, absorb_prob[i]);
+                    fprintf(stderr, "original_absorb_prob[0] = %g ", original_absorb_prob[0]);
+                    fprintf(stderr, "original_absorb_prob[1] = %g ", original_absorb_prob[1]);
+                    fprintf(stderr, "original_absorb_prob[2] = %g ", original_absorb_prob[2]);
+                    fprintf(stderr, "original_alive_prob[0] = %g ", original_alive_prob[0]);
+                    fprintf(stderr, "original_alive_prob[1] = %g ", original_alive_prob[1]);
+                    fprintf(stderr, "original_alive_prob[2] = %g ", original_alive_prob[2]);
+                    fprintf(stderr, "abs(expm1(-1.0 * phys_tau_total)) = %g ", abs(expm1(-1.0 * phys_tau_total)));
+                    fprintf(stderr, "normal_factor = %g ", normal_factor);
+                    fprintf(stderr, "phys_tau_total = %g \n", phys_tau_total);
+                }
+                if(isinf(effect_tau[i])){
+                    fprintf(stderr, "inf! ");
+                    if((*PP)->Photons * slice_factor2 > (thisDensity * CellVolume / ((1.0 * RaysPerCell))))
+                    {fprintf(stderr, "save the world!   ");}
+                    fprintf(stderr, "absorb_prob[%lld] = %g ", i, absorb_prob[i]);
+                    fprintf(stderr, "original_absorb_prob[0] = %g ", original_absorb_prob[0]);
+                    fprintf(stderr, "original_absorb_prob[1] = %g ", original_absorb_prob[1]);
+                    fprintf(stderr, "original_absorb_prob[2] = %g ", original_absorb_prob[2]);
+                    fprintf(stderr, "original_alive_prob[0] = %g ", original_alive_prob[0]);
+                    fprintf(stderr, "original_alive_prob[1] = %g ", original_alive_prob[1]);
+                    fprintf(stderr, "original_alive_prob[2] = %g ", original_alive_prob[2]);
+                    fprintf(stderr, "abs(expm1(-1.0 * phys_tau_total)) = %g ", abs(expm1(-1.0 * phys_tau_total)));
+                    fprintf(stderr, "normal_factor = %g ", normal_factor);
+                    fprintf(stderr, "phys_tau_total = %g \n", phys_tau_total);
+                }
+            }
+            // Run RadiativeTransferIonization by effect_tau
+            for (i = 0; i <= type; i++) {
+                taua = (float) effect_tau[i];
+                if(FAIL == RadiativeTransferIonization(PP, dPi, index, i, taua, factor1, 
+                             ExcessEnergyfactor, slice_factor2, kphNum, 
+                             gammaNum)){    
+                    fprintf(stderr, "Failed to calculate the ionizing radiation");
+                    return FAIL;
+                }
+            }
+        }
+        // If phys_tau_total > Threshold_TAU (50.0), adopt the approximation form for probabilistic method
+        // to avoid numerical issue When phys_tau_total is large, it is negligible in the probabilistic method
+        // In the case, the absorption probabilities only relies on the differences of physical tau between 
+        // different elements. Therefore, shifting all tau by a constant can improve the numerical accuracy for
+        // exp function!    
+        else {
+            for (i = 0; i <= type; i++) {
+                if(max_tau < phys_tau[i]) max_tau = phys_tau[i];
+            }
+            if (max_tau > Threshold_TAU) {
+                for (i = 0; i <= type; i++) {
+                    phys_tau[i] = phys_tau[i] - (max_tau - Threshold_TAU);
+                }
+            }
+            for (i = 0; i <= type; i++) {
+               // Note that, the max of modified tau is Threshold_TAU.
+               // if the modified tau is negative, the gap between this tau and the max value is 
+               // larger than 50! So, the absorption is dominated by the element
+               // which has the max tau and the element which has the negative modified tau 
+               // cannot absorb any photon! In the other words, the absorption probability is approaching
+               // to zero! 
+               if (phys_tau[i] <= 0.0) {
+                   original_alive_prob[i] = 1.0;
+               }
+               else {
+                   original_alive_prob[i] = exp(-1.0 * phys_tau[i]);
+               }
+            } 
+            normal_factor  = original_alive_prob[0] * original_alive_prob[1];
+            normal_factor += original_alive_prob[0] * original_alive_prob[2];
+            normal_factor += original_alive_prob[1] * original_alive_prob[2];
+            absorb_prob[0] = original_alive_prob[1] * original_alive_prob[2] / normal_factor ;
+            absorb_prob[0] = min(0.9999999999999, absorb_prob[0]);  // Avoid probability become zero.
+            absorb_prob[1] = original_alive_prob[0] * original_alive_prob[2] / normal_factor ;
+            absorb_prob[1] = min(0.9999999999999, absorb_prob[1]);  // Avoid probability become zero.
+            if (type == iHeII) {
+                absorb_prob[2] = original_alive_prob[0] * original_alive_prob[1] / normal_factor ;
+                absorb_prob[2] = min(0.9999999999999, absorb_prob[2]);  // Avoid probability become zero.
+            }
+            for (i = 0; i <= type; i++) {
+                effect_tau[i] = max(0.0, -1.0 * log1p(-1.0 * absorb_prob[i]));    // log1p(x) = ln(1+x)
+                if(isnan(effect_tau[i])){
+                    fprintf(stderr, "NAN! ");
+                    fprintf(stderr, "absorb_prob[%lld] = %g \n", i, absorb_prob[i]);
+                    if((*PP)->Photons * slice_factor2 > (thisDensity * CellVolume / (1.0 * RaysPerCell)))
+                    {fprintf(stderr, "save the world!   ");}
+                    fprintf(stderr, "absorb_prob[%lld] = %g ", i, absorb_prob[i]);
+                    fprintf(stderr, "original_absorb_prob[0] = %g ", original_absorb_prob[0]);
+                    fprintf(stderr, "original_absorb_prob[1] = %g ", original_absorb_prob[1]);
+                    fprintf(stderr, "original_absorb_prob[2] = %g ", original_absorb_prob[2]);
+                    fprintf(stderr, "original_alive_prob[0] = %g ", original_alive_prob[0]);
+                    fprintf(stderr, "original_alive_prob[1] = %g ", original_alive_prob[1]);
+                    fprintf(stderr, "original_alive_prob[2] = %g ", original_alive_prob[2]);
+                    fprintf(stderr, "abs(expm1(-1.0 * phys_tau_total)) = %g ", abs(expm1(-1.0 * phys_tau_total)));
+                    fprintf(stderr, "normal_factor = %g ", normal_factor);
+                    fprintf(stderr, "phys_tau_total = %g \n", phys_tau_total);
+                }
+                if(isinf(effect_tau[i])){
+                    fprintf(stderr, "inf! ");
+                    if((*PP)->Photons * slice_factor2 > (thisDensity * CellVolume / (1.0 * RaysPerCell)))
+                    {fprintf(stderr, "save the world!   ");}
+                    fprintf(stderr, "absorb_prob[%lld] = %g ", i, absorb_prob[i]);
+                    fprintf(stderr, "original_absorb_prob[0] = %g ", original_absorb_prob[0]);
+                    fprintf(stderr, "original_absorb_prob[1] = %g ", original_absorb_prob[1]);
+                    fprintf(stderr, "original_absorb_prob[2] = %g ", original_absorb_prob[2]);
+                    fprintf(stderr, "original_alive_prob[0] = %g ", original_alive_prob[0]);
+                    fprintf(stderr, "original_alive_prob[1] = %g ", original_alive_prob[1]);
+                    fprintf(stderr, "original_alive_prob[2] = %g ", original_alive_prob[2]);
+                    fprintf(stderr, "abs(expm1(-1.0 * phys_tau_total)) = %g ", abs(expm1(-1.0 * phys_tau_total)));
+                    fprintf(stderr, "normal_factor = %g ", normal_factor);
+                    fprintf(stderr, "phys_tau_total = %g \n", phys_tau_total);
+                }
+            }
+            // Run RadiativeTransferIonization by effect_tau
+            for (i = 0; i <= type; i++) {
+                taua = (float) effect_tau[i];
+                if(FAIL == RadiativeTransferIonization(PP, dPi, index, i, taua, factor1, 
+                             ExcessEnergyfactor, slice_factor2, kphNum, 
+                             gammaNum)){    
+                    fprintf(stderr, "Failed to calculate the ionizing radiation");
+                    return FAIL;
+                }
+            }
+        }
+/* Original enzo code 
+        //  Loop over absorbers - type = 0 or 1 or 2 
+        for (i = 0; i <= type; i++){
+	        thisDensity = PopulationFractions[i] * fields[i][index] * 
+	        ConvertToProperNumberDensity; //[cm^-3] for species i
+	        taua = thisDensity * ddr * sigma[i];  //in cgs
+            if(FAIL == RadiativeTransferIonization(PP, dPi, index, i, taua, factor1, 
+		        	     ExcessEnergyfactor, slice_factor2, kphNum, 
+	    		         gammaNum)){
+	            fprintf(stderr, "Failed to calculate the ionizing radiation");
+	            return FAIL;
+	        }
+            // Exit the loop if everything's been absorbed
+            if (taua > 20.0) break;
+        }    
+*/
+        // for (i = 0; i <= type; i++) dP += dPi[i];  // original enzo code: forget to do geo_correction..
+        for (i = 0; i <= type; i++) dP += dPi[i] * slice_factor2;
+        (*PP)->ColumnDensity += thisDensity * ddr * LengthUnits; //in cgs
+        break;
 
       /************************************************************/
       /* Lyman-Werner radiation  - Type 3 */
@@ -695,71 +969,222 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
       /************************************************************/
     case XRAYS:
 
-      // Shull & van Steenberg (1985)
-      if (RadiationXRaySecondaryIon) {
-	xx = max(fields[HIIField][index] / 
-		 (fields[HIIField][index] + fields[HIIField][index]), 1e-4);
-	heat_factor    = 0.9971 * (1 - powf(1 - powf(xx, 0.2663f), 1.3163));
+        // Shull & van Steenberg (1985)
+        if (RadiationXRaySecondaryIon) {
+	        xx = max(fields[HIIField][index] / (fields[HIIField][index] + fields[HIIField][index]), 1e-4);
+	        heat_factor = 0.9971 * (1 - powf(1 - powf(xx, 0.2663f), 1.3163));
+        	ion2_factor[HIField] = 0.3908 * nSecondaryHII * powf(1 - powf(xx, 0.4092f), 1.7592f);
+	        ion2_factor[HeIField] = 0.0554 * nSecondaryHeII * powf(1 - powf(xx, 0.4614f), 1.6660f);
+        }
+        else {
+	        if(secondary_flag) {
+	            fprintf(stderr, "%s: WARNING - Secondary ionisations NOT turned on\n", __FUNCTION__);
+	            secondary_flag = 0;
+	        }
+        }
+        dP = 0.0; 
+        ResetdPi(dPi);
+        // KH 2021/7/20
+        // Applying the probabilistic method (Bolton_2004)
+        // 1: HI 2: HeI 3: HeII
+        for (i = 0; i < 3; i++) phys_tau[i] = 0.0;  // physical_tau = density * cross_section * distance
+        for (i = 0; i < 3; i++) original_absorb_prob[i] = 0.0;  // original_absorption_probability = 1 - exp(-tau)
+        for (i = 0; i < 3; i++) original_alive_prob[i]  = 1.0;  // original_transmission_probability = exp(-tau)
+        for (i = 0; i < 3; i++) absorb_prob[i] = 0.0;           // absorption probability based on the probabilistic method
+        for (i = 0; i < 3; i++) effect_tau[i] = 0.0;            // Effective optical depth
+        normal_factor  = 0.0;                        // Normalisation factor
+        phys_tau_total = 0.0;                        // tau_total = sum(phys_tau)
+        max_tau        = 0.0;                       // Maximum vale of physical tau
+        // const double Threshold_TAU  = 50.0;                // if total physical tau > this threshold, adopt approximation of probabilistic method
+        phys_cell_volume = CellVolume * POW(LengthUnits, 3);     //  in cgs^3.0  need double check!
+        for (i = 0; i < 3; i++) {
+	        thisDensity = PopulationFractions[i] * fields[i][index] * ConvertToProperNumberDensity; //[cm^-3] for species i
+	        thisDensity_Ion = PopulationFractions[i] * Ion_fields[i][index] * 
+            ConvertToProperNumberDensity; 
+            // Electron density is mass desntiy. 
+            // Enzo website : in order to convert the electron density to cgs
+            // it must be multiplied by the code density conversion factor 
+            // and then (m_e/m_p)
+	        thisDensity_electron = BaryonField[DeNum][index] * ConvertToProperNumberDensity;
+            recombination_threshold = thisDensity + thisDensity_Ion * thisDensity_electron *
+                alpha_recombination[i] * dtPhoton  * TimeUnits;                     
+            Ion_fraction = fields[i][index] / (fields[i][index] + Ion_fields[i][index]);
+            phys_tau[i] = max(0.0, thisDensity * ddr * sigma[i]);  //in cgs
+            //phys_tau[i] = max(0.0, recombination_threshold * ddr * sigma[i]);  //in cgs
+            // dN = thisDensity * ddr;
+	        // tau = dN*sigma[i];
+            // The original code doesn't match the comment (Update Column Densities from all species)
+            // Move this subroutine to here to update the ColumnDensity from all species (HI, HeI, HeII) 
+            // Update Column Densities from all species
+            (*PP)->ColumnDensity += thisDensity * ddr * LengthUnits;
+            // If the number of photon is higher than the number of HI/HeI/HeII, try to keep the conservation of photon.
+            // The original routine will overkill the photon when tau is large and Nphoton > NHI/NHeI/NHeII
+            // when Nphoton/NHI = 1.000000002, the maximun possible tau is around 20.
+            // In RadiativeTransferIonization, tau = 20 is the condition for complete absorption. 
+            //  max_tau = - ln(1-NHI/P) log1p(x) = ln(1+x)
+            // Unit of (*PP)->Photons :  number_of_photon / pow(LengthUnits,3)   (#)
+            // if((*PP)->Photons * slice_factor2 * pow(LengthUnits,3) > (0.2 * thisDensity * phys_cell_volume)) 
+            // if((phys_tau[i] > 1.0) && ((*PP)->Photons * slice_factor2 > (thisDensity * CellVolume / (1.0 * RaysPerCell)))) 
+            // KH 2021/08/13 : Consider recombination effect  
+            if((Ion_fraction > 0.1) &&
+               (((*PP)->Photons * slice_factor2) > 
+                (recombination_threshold  * CellVolume / (1.0 * RaysPerCell)))) {
+                //phys_tau[i] = min(phys_tau[i], 
+                //            (-1.0 * log1p(-1.0 * (thisDensity * CellVolume / (1.0 * RaysPerCell)) /
+                //            ((*PP)->Photons * slice_factor2 ))));
+                phys_tau[i] = min(phys_tau[i], 
+                (-1.0 * log1p(-1.0 * (recombination_threshold * CellVolume / (1.0 * RaysPerCell)) / 
+                 ((*PP)->Photons * slice_factor2 ))));
+            }
+            phys_tau_total += phys_tau[i];
+        }
+        // If the absorption is small, use the original routine to calculate the absorption.
+        if (phys_tau_total < 3.0e-10) {
+            /* Loop over absorbers */
+            for (i = 0; i < 3; i++) {   //##### for TraceSpectrum test 3 -> 1
+                tau = (float) phys_tau[i];
 
-	ion2_factor[HIField] = 0.3908 * nSecondaryHII * 
-	  powf(1 - powf(xx, 0.4092f), 1.7592f);
-	ion2_factor[HeIField] = 0.0554 * nSecondaryHeII * 
-	  powf(1 - powf(xx, 0.4614f), 1.6660f);
-      }
-      else {
-	if(secondary_flag) {
-	  fprintf(stderr, "%s: WARNING - Secondary ionisations NOT turned on\n", __FUNCTION__);
-	  secondary_flag = 0;
-	}
-      }
-      dP = 0.0; 
-      ResetdPi(dPi);
+                if(FAIL == RadiativeTransferXRays(PP, dPi, index, i, ddr, tau, 
+                          slice_factor2, factor1, ExcessEnergyfactor, 
+                          ion2_factor, heat_factor, kphNum, gammaNum))
+                {
+                    fprintf(stderr, "Failed to calculate the LW radiation\n");
+                    return FAIL;
+                }
+            } // ENDFOR absorber
+        }
+        // if total optical depth isn't small, use probabilistic method
+        else if (phys_tau_total < Threshold_TAU) {
+            for (i = 0; i < 3; i++) {
+                //original_absorb_prob[i] = 1.0 - exp(-1.0 * phys_tau[i]);
+                original_absorb_prob[i] = abs(expm1(-1.0 * phys_tau[i]));  //  expm1(x) = exp(x) - 1
+                original_alive_prob[i]  =     exp  (-1.0 * phys_tau[i]) ;
+            }
+            normal_factor  = original_absorb_prob[0] * original_alive_prob[1] * original_alive_prob[2];
+            normal_factor += original_alive_prob[0] * original_absorb_prob[1] * original_alive_prob[2];
+            normal_factor += original_alive_prob[0] * original_alive_prob[1] * original_absorb_prob[2];
+            // normal_factor /= abs(expm1(-1.0 * phys_tau_total));
+            
+            absorb_prob[0] = original_absorb_prob[0] * original_alive_prob[1] * original_alive_prob[2] *
+                             abs(expm1(-1.0 * phys_tau_total)) / normal_factor ;
+            absorb_prob[0] = min(0.9999999999999, absorb_prob[0]);  // Avoid probability become zero.
+            absorb_prob[1] = original_alive_prob[0] * original_absorb_prob[1] * original_alive_prob[2] * 
+                             abs(expm1(-1.0 * phys_tau_total)) / normal_factor ;
+            absorb_prob[1] = min(0.9999999999999, absorb_prob[1]);  // Avoid probability become zero.
+            absorb_prob[2] = original_alive_prob[0] * original_alive_prob[1] * original_absorb_prob[2] * 
+                             abs(expm1(-1.0 * phys_tau_total)) / normal_factor ;
+            absorb_prob[2] = min(0.9999999999999, absorb_prob[2]);  // Avoid probability become zero.
+            for (i = 0; i < 3; i++) {
+                effect_tau[i] = max(0.0, -1.0 * log1p(-1.0 * absorb_prob[i]));    // log1p(x) = ln(1+x)
+            }
+            // Run RadiativeTransferXRays by effect_tau
+             /* Loop over absorbers */
+            for (i = 0; i < 3; i++) {   //##### for TraceSpectrum test 3 -> 1
+                tau = (float) effect_tau[i];
+                if(FAIL == RadiativeTransferXRays(PP, dPi, index, i, ddr, tau, 
+                          slice_factor2, factor1, ExcessEnergyfactor, 
+                          ion2_factor, heat_factor, kphNum, gammaNum))
+                {
+                    fprintf(stderr, "Failed to calculate the LW radiation\n");
+                    return FAIL;
+                }
+            } // ENDFOR absorber
+        }
+        // If phys_tau_total > Threshold_TAU (50.0), adopt the approximation form for probabilistic method
+        // to avoid numerical issue When phys_tau_total is large, it is negligible in the probabilistic method
+        // In the case, the absorption probabilities only relies on the differences of physical tau between 
+        // different elements. Therefore, shifting all tau by a constant can improve the numerical accuracy for
+        // exp function!    
+        else {
+            for (i = 0; i < 3; i++) {
+                if(max_tau < phys_tau[i]) max_tau = phys_tau[i];
+            }
+            if (max_tau > Threshold_TAU) {
+                for (i = 0; i < 3; i++) {
+                    phys_tau[i] = phys_tau[i] - (max_tau - Threshold_TAU);
+                }
+            }
+            for (i = 0; i < 3; i++) {
+               // Note that, the max of modified tau is Threshold_TAU.
+               // if the modified tau is negative, the gap between this tau and the max value is 
+               // larger than 50! So, the absorption is dominated by the element
+               // which has the max tau and the element which has the negative modified tau 
+               // cannot absorb any photon! In the other words, the absorption probability is approaching
+               // to zero! 
+               if (phys_tau[i] <= 0.0) {
+                   original_alive_prob[i] = 1.0;
+               }
+               else {
+                   original_alive_prob[i] = exp(-1.0 * phys_tau[i]);
+               }
+            } 
+            normal_factor  = original_alive_prob[0] * original_alive_prob[1];
+            normal_factor += original_alive_prob[0] * original_alive_prob[2];
+            normal_factor += original_alive_prob[1] * original_alive_prob[2];
+            absorb_prob[0] = original_alive_prob[1] * original_alive_prob[2] / normal_factor ;
+            absorb_prob[0] = min(0.9999999999999, absorb_prob[0]);  // Avoid probability become zero.
+            absorb_prob[1] = original_alive_prob[0] * original_alive_prob[2] / normal_factor ;
+            absorb_prob[1] = min(0.9999999999999, absorb_prob[1]);  // Avoid probability become zero.
+            absorb_prob[2] = original_alive_prob[0] * original_alive_prob[1] / normal_factor ;
+            absorb_prob[2] = min(0.9999999999999, absorb_prob[2]);  // Avoid probability become zero.
+            for (i = 0; i < 3; i++) {
+                effect_tau[i] = max(0.0, -1.0 * log1p(-1.0 * absorb_prob[i]));    // log1p(x) = ln(1+x)
+            }
+            // Run RadiativeTransferIonization by effect_tau
+            for (i = 0; i < 3; i++) {
+                tau = (float) effect_tau[i];
+                if(FAIL == RadiativeTransferXRays(PP, dPi, index, i, ddr, tau, 
+                          slice_factor2, factor1, ExcessEnergyfactor, 
+                          ion2_factor, heat_factor, kphNum, gammaNum))
+                {
+                    fprintf(stderr, "Failed to calculate the LW radiation\n");
+                    return FAIL;
+                }
+            }
+        }
+/* // Ezno original routine
+        // Loop over absorbers 
+        for (i = 0; i < 3; i++) {   //##### for TraceSpectrum test 3 -> 1
+	        thisDensity = PopulationFractions[i] * fields[i][index] * ConvertToProperNumberDensity;
+	        // optical depth of ray segment
+	        dN = thisDensity * ddr;
+	        tau = dN*sigma[i];
 
-      /* Loop over absorbers */
-      for (i = 0; i < 3; i++) {   //##### for TraceSpectrum test 3 -> 1
-
-	thisDensity = PopulationFractions[i] * fields[i][index] *
-	  ConvertToProperNumberDensity;
-	
-	// optical depth of ray segment
-	dN = thisDensity * ddr;
-	tau = dN*sigma[i];
-
-	if(FAIL == RadiativeTransferXRays(PP, dPi, index, i, ddr, tau, 
-					  slice_factor2, factor1, ExcessEnergyfactor, 
+	        if(FAIL == RadiativeTransferXRays(PP, dPi, index, i, ddr, tau, 
+			   		  slice_factor2, factor1, ExcessEnergyfactor, 
 					  ion2_factor, heat_factor, kphNum, gammaNum))
-	  {
-	     fprintf(stderr, "Failed to calculate the LW radiation\n");
-	     return FAIL;
-	  }
-      } // ENDFOR absorber
-      /* Update Column Densities from all species */
-      (*PP)->ColumnDensity += dN * LengthUnits;
+	        {
+	            fprintf(stderr, "Failed to calculate the LW radiation\n");
+	            return FAIL;
+	        }
+        } // ENDFOR absorber
+        // Update Column Densities from all species
+        (*PP)->ColumnDensity += dN * LengthUnits;
+*/
+        if (RadiationXRayComptonHeating) {  
 
-      if (RadiationXRayComptonHeating) {  
-
-	thisDensity = BaryonField[DeNum][index] * ConvertToProperNumberDensity;
-	dN = thisDensity * ddr;
-	if(FAIL == RadiativeTransferComptonHeating(PP, dPi, index, LengthUnits, factor1, 
+	        thisDensity = BaryonField[DeNum][index] * ConvertToProperNumberDensity;
+	        dN = thisDensity * ddr;
+	        if(FAIL == RadiativeTransferComptonHeating(PP, dPi, index, LengthUnits, factor1, 
 						   TemperatureField, ddr, dN, slice_factor2, 
 						   gammaNum))
-	  {
-	     fprintf(stderr, "Failed to calculate the Compton Heating\n");
-	     return FAIL;
-	  }
-      }
-      else {
-	if(compton_flag) {
-	  fprintf(stderr, "%s: WARNING - Compton Heating NOT turned on\n", __FUNCTION__);
-	  compton_flag = 0;
-	}
-      }
+	        {
+	            fprintf(stderr, "Failed to calculate the Compton Heating\n");
+	            return FAIL;
+	        }
+        }
+        else {
+	        if(compton_flag) {
+	            fprintf(stderr, "%s: WARNING - Compton Heating NOT turned on\n", __FUNCTION__);
+	            compton_flag = 0;
+	        }
+        }
       
-      // find the total absorbed number of photons including Compton heating
-      for (i = 0; i < H_SPECIES + 1; i++) 
-	dP += dPi[i] * slice_factor2;
+        // find the total absorbed number of photons including Compton heating
+        for (i = 0; i < H_SPECIES + 1; i++) 
+	    dP += dPi[i] * slice_factor2;
 
-      break;
+        break;
 
       /************************************************************/
       /* tracing spectrum (HI/HeI/HeII all in one!) - Type 6 */
@@ -849,8 +1274,10 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
       return SUCCESS;
 
     // return in case we're out of photons
-    if ((*PP)->Photons < MinimumPhotonFlux*(solid_angle*Area_inv) || 
-	(*PP)->ColumnDensity > tau_delete) {
+    // tau_delete isn't true, if number of photon > number of neutral atom
+    if ((*PP)->Photons < MinimumPhotonFlux*(solid_angle*Area_inv) || (*PP)->ColumnDensity > tau_delete) {
+    // if ((*PP)->Photons < MinimumPhotonFlux*(solid_angle*Area_inv) || (phys_tau_total > TAU_DELETE_PHOTON))  
+    //if ((*PP)->Photons < MinimumPhotonFlux*(solid_angle*Area_inv)) 
       if (DEBUG > 1) {
 	fprintf(stderr, "PP-Photons: %"GSYM" (%"GSYM"), PP->Radius: %"GSYM
 		"PP->CurrentTime: %"FSYM"\n",

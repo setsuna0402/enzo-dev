@@ -76,7 +76,18 @@ int StarParticleDeath(LevelHierarchyEntry *LevelArray[], int level,
     }
 
   } // ENDWHILE stars
-
+  /* 
+  // KH testing
+  ThisStar = AllStars;
+  while(ThisStar != NULL && death == KILL_STAR)
+  {
+    fprintf(stderr, "KH Function = %s, ", __FUNCTION__);
+    fprintf(stderr, "ID = %lld, ", ThisStar->ReturnID());
+    fprintf(stderr, "last_accretion_rate = %g \n", ThisStar->ReturnLastAccretionRate());
+    if(ThisStar->NextStar != NULL) ThisStar = ThisStar->NextStar;
+    else break;
+  }
+  */
   LCAPERF_STOP("StarParticleDeath");
   return SUCCESS;
 

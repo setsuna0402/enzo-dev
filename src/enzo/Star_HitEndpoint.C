@@ -36,7 +36,13 @@ int Star::HitEndpoint(FLOAT Time)
 
   int result = NO_DEATH;
   if ((Time > this->BirthTime + this->LifeTime) && this->type >=0)
-    result = KILL_STAR;
+    {
+        result = KILL_STAR;
+        // fprintf(stderr, "KH Function = %s, ", __FUNCTION__);
+        // fprintf(stderr, "ID = %lld, ", Identifier);
+        // fprintf(stderr, "last_accretion_rate = %g, ", last_accretion_rate);
+        // fprintf(stderr, "KILL_STAR = %lld. \n", KILL_STAR);
+    }
   else
     return result;
 

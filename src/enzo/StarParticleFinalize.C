@@ -60,7 +60,6 @@ int StarParticleFinalize(HierarchyEntry *Grids[], TopGridData *MetaData,
 
   if (!StarParticleCreation && !StarParticleFeedback)
     return SUCCESS;
-
   int l, NumberOfStars;
   float TotalMass;
   Star *ThisStar, *MoveStar;
@@ -145,6 +144,7 @@ int StarParticleFinalize(HierarchyEntry *Grids[], TopGridData *MetaData,
       if (ThisStar->ReturnType() == PopIII && PopIIIOutputOnFeedback == TRUE)
 	OutputNow = TRUE;
     }
+
     ThisStar->ResetAccretion();
     ThisStar->CopyToGrid();
     ThisStar->MirrorToParticle();
@@ -153,6 +153,13 @@ int StarParticleFinalize(HierarchyEntry *Grids[], TopGridData *MetaData,
     // set the pointers in the global copy to NULL before deleting the stars.
     ThisStar->ResetAccretionPointers();
 
+    // KH modification 8/5/2021
+    // MBHParticleIOTemp is static array declares in global_data.h (double MBHParticleIOTemp[30][5+MAX_DIMENSION];)
+    // Therefor, if the number of MBH particle > 30, mbh_particle_io_count will be larger than 30 and causes segmentation fault (wrong index.)
+    // Current solution : bypassing this process.
+    // For future, MBHParticleIOTemp should become a dynamical array. (Need MPI to synchronisation)
+    // WriteAllData.C and Group_WriteAllData.C also read and dump MBHParticleIOTemp. 
+#ifdef UNUSED
     // If you use MBHParticleIO, copy some info to MBHParticleIOTemp[][]  
     // for later use.  - Ji-hoon Kim, Nov.2009
     if (MBHParticleIO == TRUE && ThisStar->ReturnType() == PARTICLE_TYPE_MBH) {
@@ -163,7 +170,7 @@ int StarParticleFinalize(HierarchyEntry *Grids[], TopGridData *MetaData,
       MBHParticleIOTemp[mbh_particle_io_count][5] = ThisStar->ReturnNotEjectedMass();      
       mbh_particle_io_count++;
     }
-
+#endif /* UNUSED */
   } // ENDFOR stars
 
   if (PopIIIOutputOnFeedback)

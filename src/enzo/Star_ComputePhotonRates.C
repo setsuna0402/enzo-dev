@@ -31,6 +31,19 @@
 
 float ReturnValuesFromSpectrumTable(float ColumnDensity, float dColumnDensity, int mode);
 
+// KH 2021/6/28
+// Need to be embedded into ENZO coding structure after testing.
+// Define the spectrum function. L = Lo * (13.6/energy) ^ index  (eV/s/Hz)
+double QSO_Luminosity(const float &energy, const double &Lo, const float &index)
+{
+    double L_nu = 0.0;
+    double nu_HI = 13.6;    // eV
+    L_nu = Lo * pow(nu_HI / energy, index);     //  eV/Hz/s
+
+    return L_nu;
+}
+
+
 int Star::ComputePhotonRates(const float TimeUnits, int &nbins, float E[], double Q[])
 {
 
@@ -131,22 +144,89 @@ int Star::ComputePhotonRates(const float TimeUnits, int &nbins, float E[], doubl
        spectral temperature is 2 keV, for accreting massive BH */
 
   case MBH:
-    nbins = 1;
-    XrayLuminosityFraction = 1.0;
-    E[0] = 2000.0; //2keV
-    E[1] = 0.0;
-    E[2] = 0.0;
-    E[3] = 0.0;
-    // 1.99e33g/Ms * (3e10cm/s)^2 * 6.24e11eV/ergs = 1.12e66 eV/Ms 
-    Q[0] = 1.12e66 * MBHFeedbackRadiativeEfficiency * XrayLuminosityFraction *
-      this->last_accretion_rate / E[0]; 
-    Q[1] = 0.0;
-    Q[2] = 0.0;
-    Q[3] = 0.0;  
+    {
+        //KH adapting Gaussian Quadrature and QSO spectrum.
+        const int number_bins = 20;    // MAX_ENERGY_BINS = 20
+        nbins = number_bins;
+        XrayLuminosityFraction = 1.0;
+        double GQ_weight[number_bins] = {3.15087663e+14, 6.36525437e+14, 7.56561967e+14, 6.36525437e+14, 3.15087663e+14, 8.53601122e+14, 1.72440527e+15, 2.04959515e+15, 1.72440527e+15, 8.53601122e+14, 7.62203685e+15, 1.70856566e+16, 2.50465076e+16, 3.07832530e+16, 3.37850775e+16, 3.37850775e+16, 3.07832530e+16, 2.50465076e+16, 1.70856566e+16, 7.62203685e+15};
+        /* Original ENZO setting
+        E[0] = 2000.0; //2keV
+        E[1] = 0.0;
+        E[2] = 0.0;
+        E[3] = 0.0;
+        */
+        E[0] = 14.11601085; 
+        E[1] = 16.13841879;
+        E[2] = 19.1;
+        E[3] = 22.06158121;
+        E[4] = 24.08398915;
+        E[5] = 25.9979203;
+        E[6] = 31.47680728;
+        E[7] = 39.5;
+        E[8] = 47.52319272; 
+        E[9] = 53.0020797;
+        E[10] = 66.73699332;
+        E[11] = 118.19804023;
+        E[12] = 205.97515611;
+        E[13] = 322.29065766;
+        E[14] = 456.81221253;
+        E[15] = 597.58778747;
+        E[16] = 732.10934234;
+        E[17] = 848.42484389;
+        E[18] = 936.20195977;
+        E[19] = 987.66300668;
+        // KH 2021: Use Eddington luminosity. (For long term, this should be achieved by adding a new module.)
+        // Unit of Mass in star class is SolarMass
+        // L_solar = 3.826 * 10 ^ 26 Joules/s = 2.388e45 eV/s
+        double L_solar = 2.388e45;    // eV/s
+        double L_edd   = 0.0;          // eV/s
+        double L_total = 5.329276413387563e+58;  // eV/s Exact luminosity of QSO
+        double Lo_spectrum = 1.236708e43;    // eV/s/Hz
+        float  spectral_index = 1.73;
+        float  reduced_factor = 0.01;   
+        double Mass_Scaling_facter = 1e6;   // The Input Mass of MBHs has been reducded. Put the scaling back when calculate the luminosity. Default :1e8
+        // L_edd = 3.2 * 10^4 * (Mass/Mass_solar) * L_solar
+        L_edd = reduced_factor * 3.2 * 10000.0 * this->Mass * Mass_Scaling_facter * L_solar;   // eV/s
+        // L_edd = 3.2 * 10000.0 * this->Mass * Mass_Scaling_facter * L_solar;   // eV/s
+        double L_factor = Lo_spectrum * (L_edd / L_total);    // L_factor = Lo_spectrum * L_edd / L_total
+        for(int j=0; j<nbins; j++)
+        {
+            // Number of photon = (pow(13.6/energy, spectral_index) / energy) * (Lo_spectrum * L_edd/L_total) * GQ_weight    GQ_weight : weight computed by GQ.
+            Q[j] = (QSO_Luminosity(E[j], L_factor, spectral_index) / E[j]) * GQ_weight[j]; 
+        }
+        for(int j=nbins; j<MAX_ENERGY_BINS; j++)
+        {
+            // Set the unused values to zero, following the original ENZO code.
+            Q[j] = 0.0;
+            E[j] = 0.0; 
+        } 
+        /* Original code
+        // 1.99e33g/Ms * (3e10cm/s)^2 * 6.24e11eV/ergs = 1.12e66 eV/Ms (KH Ms=Msolar)
+        // 1.12e66 eV/Msolar * accretion (Msolar/s) = eV/s 
+        Q[0] = 1.12e66 * MBHFeedbackRadiativeEfficiency * XrayLuminosityFraction * this->last_accretion_rate / E[0];
+        Q[0] = L_edd / E[0];
+        Q[1] = 0.0;
+        Q[2] = 0.0;
+        Q[3] = 0.0;
+        End */
+        //KH testing
+        fprintf(stderr, "function = %s, ", __FUNCTION__);
+        fprintf(stderr, "ID = %lld, ", Identifier);
+        fprintf(stderr, "star_type = %ld, ", type);
+        fprintf(stderr, "L_edd = %g, ", L_edd);
+        fprintf(stderr, "Q[0] = %g, ", Q[0]);
+        fprintf(stderr, "Mass = %g (SolarMass). ", this->Mass);
+        //fprintf(stderr, "MBHFeedbackRadiativeEfficiency = %g, ", MBHFeedbackRadiativeEfficiency);
+        //fprintf(stderr, "XrayLuminosityFraction = %g, ", XrayLuminosityFraction);
+        //fprintf(stderr, "this->last_accretion_rate = %g, ", this->last_accretion_rate);
+        //fprintf(stderr, "last_accretion_rate = %g, ", last_accretion_rate);
+        //fprintf(stderr, "last_accretion_rate = %p,  this->last_accretion_rate = %p, ", &last_accretion_rate, &this->last_accretion_rate);
+        fprintf(stderr, "BirthTime = %"FSYM", LifeTime = %"FSYM".\n", BirthTime, LifeTime); 
 
 #define NOT_HII_REGION_TEST
 #ifdef HII_REGION_TEST
-    Q[0] = 1.0e45 * MBHFeedbackRadiativeEfficiency * XrayLuminosityFraction / E[0];
+        Q[0] = 1.0e45 * MBHFeedbackRadiativeEfficiency * XrayLuminosityFraction / E[0];
 #endif
     
 //    fprintf(stdout, "star::ComputePhotonRates: this->last_accretion_rate = %g, Q[0]=%g\n", 
@@ -154,26 +234,26 @@ int Star::ComputePhotonRates(const float TimeUnits, int &nbins, float E[], doubl
 
 #ifdef TRANSFER
 
-    if (RadiativeTransferTraceSpectrum == TRUE) {
-      nbins = 1;
-      E[0] = ReturnValuesFromSpectrumTable(0.0, 0.0, 3); //##### mean energy if column density=0
-      E[1] = 0.0;
-      E[2] = 0.0;
-      E[3] = 0.0;
+        if (RadiativeTransferTraceSpectrum == TRUE) {
+        nbins = 1;
+        E[0] = ReturnValuesFromSpectrumTable(0.0, 0.0, 3); //##### mean energy if column density=0
+        E[1] = 0.0;
+        E[2] = 0.0;
+        E[3] = 0.0;
 
-      Q[0] = 1.12e66 * MBHFeedbackRadiativeEfficiency *
-	this->last_accretion_rate / E[0]; 
-      Q[1] = 0.0;
-      Q[2] = 0.0;
-      Q[3] = 0.0;  
+        Q[0] = 1.12e66 * MBHFeedbackRadiativeEfficiency *
+	    this->last_accretion_rate / E[0]; 
+        Q[1] = 0.0;
+        Q[2] = 0.0;
+        Q[3] = 0.0;  
 
       //better check the initial mean energy when tracing spectrum
-      if (MyProcessorNumber == ROOT_PROCESSOR)
-	fprintf(stdout, "star::CPP: check initial mean E of photon SED: E[0] = %g\n", E[0]); 
-    }
+        if (MyProcessorNumber == ROOT_PROCESSOR)
+	    fprintf(stdout, "star::CPP: check initial mean E of photon SED: E[0] = %g\n", E[0]); 
+        }
 
 #endif
-
+    }
     break;
 
   case SimpleSource:

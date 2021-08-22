@@ -32,6 +32,8 @@
 #include "CommunicationUtilities.h"
 #include "phys_constants.h"
 
+#define MAX_NUMBER_CROSS_CELL 1.1
+
 extern int LevelCycleCount[MAX_DEPTH_OF_HIERARCHY];
 //int LastTimestepUseHII = FALSE;
 float LastPhotonDT[2] = {-1,-1};
@@ -120,20 +122,57 @@ int RadiativeTransferComputeTimestep(LevelHierarchyEntry *LevelArray[],
     CosmologyComputeExpansionFactor(TimeNow, &a, &dadt);
   float afloat = float(a);
 
-  if (RadiativeTransferHIIRestrictedTimestep || 
-      RadiativeTransferAdaptiveTimestep == 2) {
+// KH 2021/8/3: Original code sets a lowerLimit for dtPhoton based on last step. 
+// It is generally fine. However, dtPhoton could be overestimated at the first-call of this function,
+// causing the lowerLimit may be so high. (When the luminosity of the radiation source is QSO-like.)
+// Here, I set the first two timesteps according to factor * cellwidth / lightspeed.
+// Copy the relalavt code from grid::ComputePhotonTimestep()
+// RadiativeTransferTimestepVelocityLimit in km/s
+  float dx_level, dx_ratio;
+  float dtPhotonSafety = 10*huge_number;
+  float LightSpeed;
+  LightSpeed = RadiativeTransferPropagationSpeedFraction * (clight/VelocityUnits);
+
+/*
+  if (RadiativeTransferTimestepVelocityLevel >= 0) {
+    dx_level = TopGridDx[0] * POW(RefineBy, -RadiativeTransferTimestepVelocityLevel);
+  }
+*/
+
+  if (RadiativeTransferHIIRestrictedTimestep || RadiativeTransferAdaptiveTimestep == 2) {
+    if (LastPhotonDT[0] < 0 || LastPhotonDT[1] < 0) {
+        for (l = 0; l < MAX_DEPTH_OF_HIERARCHY-1; l++) {
+            for (Temp = LevelArray[l]; Temp; Temp = Temp->NextGridThisLevel) {
+                ThisPhotonDT = afloat * MAX_NUMBER_CROSS_CELL * 
+                Temp->GridData->GetCellWidth(0, 0) / LightSpeed;
+/*
+                 if (RadiativeTransferTimestepVelocityLevel >= 0) {
+                    dx_ratio = dx_level / Temp->GridData->GetCellWidth(0, 0);
+                    if (dx_ratio > 1)
+                    ThisPhotonDT *= dx_ratio;
+                 }
+*/
+                dtPhotonSafety = min(dtPhotonSafety, ThisPhotonDT);
+            }
+        }
+        if (LastPhotonDT[0] > 0) dtPhotonSafety *= 2.0;
+        dtPhoton = min(dtPhoton, dtPhotonSafety);
+        fprintf(stderr, "dtPhotonSafety = %g ", dtPhotonSafety);
+        fprintf(stderr, "MetaData->GlobalMaximumkphIfront = %g \n", MetaData->GlobalMaximumkphIfront);
+    }
 
     // Calculate timestep by limiting to a max change in HII
-    if (RadiativeTransferHIIRestrictedTimestep)
-      for (l = 0; l < MAX_DEPTH_OF_HIERARCHY-1; l++)
-	for (Temp = LevelArray[l]; Temp; Temp = Temp->NextGridThisLevel) {
-	  ThisPhotonDT = Temp->GridData->
-	    ComputePhotonTimestepHII(DensityUnits, LengthUnits, VelocityUnits, 
-				     afloat, MetaData->GlobalMaximumkphIfront);
-	  if (ThisPhotonDT > lowerLimit)
-	    dtPhoton = min(dtPhoton, ThisPhotonDT);
-	}
-
+    if (RadiativeTransferHIIRestrictedTimestep) {
+        for (l = 0; l < MAX_DEPTH_OF_HIERARCHY-1; l++) {
+	        for (Temp = LevelArray[l]; Temp; Temp = Temp->NextGridThisLevel) {
+	            ThisPhotonDT = Temp->GridData->
+	            ComputePhotonTimestepHII(DensityUnits, LengthUnits, VelocityUnits, 
+				                        afloat, MetaData->GlobalMaximumkphIfront);
+	            if (ThisPhotonDT > lowerLimit)
+	            dtPhoton = min(dtPhoton, ThisPhotonDT);
+	        }
+        }
+    }
   // Calculate timestep by limiting to a max change in intensity
   // (proportional to the I-front speed)
     if (RadiativeTransferAdaptiveTimestep == 2)
@@ -165,15 +204,19 @@ int RadiativeTransferComputeTimestep(LevelHierarchyEntry *LevelArray[],
 	  dtPhoton = MaxDTChange * AvgLastTimestep;
       }
 
-
-    if (dtPhoton < unchangedLimit) {
+  // KH 03/08/2021: testing shorter dtPhoton
+  //  if (dtPhotonSafety >= unchangedLimit) dtPhoton = 0.1 * dtPhoton;
+// KH 2021/8/3: Only update LastPhotonDT if GlobalMaximumkphIfront > tiny_number
+    // if (dtPhoton < unchangedLimit) 
+    if ((dtPhoton < unchangedLimit) && 
+        (MetaData->GlobalMaximumkphIfront > tiny_number || dtPhotonSafety >= unchangedLimit )) {
       // Store dtPhoton before modifying it based on the next topgrid timestep
       LastPhotonDT[1] = LastPhotonDT[0];
       LastPhotonDT[0] = dtPhoton;  
     }
 
   } // ENDIF
-
+  
   // if we didn't find any cells that restrict timestep or the option
   // isn't requested, use hydro timestep on finest level
   if (dtPhoton >= unchangedLimit) {
@@ -189,7 +232,8 @@ int RadiativeTransferComputeTimestep(LevelHierarchyEntry *LevelArray[],
 		   (HydroTime - PhotonTime) / MaxStepsPerHydroStep);
     //LastTimestepUseHII = FALSE;
   } // ENDIF
-
+  // KH 04/07/2021: testing shorter dtPhoton
+  // dtPhoton = 0.1 * dtPhoton;
   /* Do not go past the level-0 time (+timestep) */
 
   float Saved_dtPhoton = dtPhoton;

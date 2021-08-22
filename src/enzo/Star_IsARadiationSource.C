@@ -51,6 +51,7 @@ bool Star::IsARadiationSource(FLOAT Time)
   rules[1] = (Time >= BirthTime && Time <= BirthTime+LifeTime && type > 0);
 
   // Non-zero BH accretion (usually accretion_rate[] here is NULL - Ji-hoon Kim Sep.2009)
+  // KH 2021, naccretions here is always equal to one. This may be a bug or a "developing" function. 
   if ((type == BlackHole || type == MBH) && naccretions > 0)
     rules[2] = (accretion_rate[0] > tiny_number); 
   else
@@ -60,6 +61,17 @@ bool Star::IsARadiationSource(FLOAT Time)
   rules[3] = (Mass > tiny_number);
 
   /******************** END RULES ********************/
+  // KH Leong : Check BirthTime and LifeTime
+  // fprintf(stderr, "KH Function = %s, ", __FUNCTION__);
+  // fprintf(stderr, "ID = %lld, ", Identifier);
+  // fprintf(stderr, "star_type = %ld, ", type);
+  // fprintf(stderr, "MBH = %ld, ", MBH);
+  // fprintf(stderr, "rule_0 = %d, rule_1 = %d, rule_2 = %d, rule_3 = %d, ", rules[0], rules[1], rules[2], rules[3]);
+  // fprintf(stderr, "naccretions = %d, ", naccretions);
+  // if (naccretions > 0) fprintf(stderr, "accretion_rate[0] = %g, ", accretion_rate[0]);
+  // fprintf(stderr, "last_accretion_rate = %g, ", last_accretion_rate);
+  // fprintf(stderr, "Time = %"FSYM", ", Time);
+  // fprintf(stderr, "BirthTime = %"FSYM", LifeTime = %"FSYM".\n", BirthTime, LifeTime);
 
   for (i = 0; i < NumberOfRules; i++)
     result &= rules[i];
