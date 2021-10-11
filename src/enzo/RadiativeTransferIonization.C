@@ -36,7 +36,7 @@ int grid::RadiativeTransferIonization(PhotonPackageEntry **PP, FLOAT *dPi, int c
   dPi[species] = (*PP)->Photons*(1-expf(-tau));
 #else
   // at most use all photons for photo-ionizations
-  if (tau > 29.9) //Completely Optically Thick  original: 20
+  if (tau > 29.0) //Completely Optically Thick  original: 20
     dPi[species] = (1.0+BFLOAT_EPSILON) * (*PP)->Photons;
   else if (tau > 1.e-4) //Exponential decline in photons
     dPi[species] = min((*PP)->Photons*(-expm1(-tau)), (*PP)->Photons);

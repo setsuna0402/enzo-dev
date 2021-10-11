@@ -41,7 +41,7 @@
 #define MAX_HEALPIX_LEVEL 29
 #define MAX_COLUMN_DENSITY 1e25
 #define MIN_TAU_IFRONT 0.1
-#define TAU_DELETE_PHOTON 29.9        // Original value = 10.0
+#define TAU_DELETE_PHOTON 29.0        // Original value = 10.0
 #define GEO_CORRECTION
 #define H_SPECIES           3         //Includes HI, HeI, HeII
 #define ALLSPECIES          6         //includes HI, HeI, HeII, H2I, H2II and HM
@@ -187,10 +187,14 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
     u_sign[dim] = sign(u[dim]);
     u_dir[dim] = (u_sign[dim]+1) / 2;  // Ray direction
 
+    //KH 2021/09/30: dir_vec is a normalised vector, any direction can be equal to zero..
+/*
     // Zeros in y&z directions possible
     if (dim > 0)
       if (fabs(u[dim]) < PFLOAT_EPSILON)
 	u[dim] = u_sign[dim]*PFLOAT_EPSILON;
+*/
+    if (fabs(u[dim]) < PFLOAT_EPSILON) u[dim] = u_sign[dim]*PFLOAT_EPSILON;
 
     u_inv[dim] = 1.0 / u[dim];
 
@@ -490,7 +494,8 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
     dr = radius - oldr;
 
     if (dr < 0) {
-      printf("dr < 0:   %"GSYM" %"GSYM" %"GSYM"\n", dr, min_dr, oldr);
+      // printf("dr < 0:   %"GSYM" %"GSYM" %"GSYM"\n", dr, min_dr, oldr);
+      fprintf(stdout, "dr < 0:   %"GSYM" %"GSYM" %"GSYM"\n", dr, min_dr, oldr);
       (*PP)->Photons = -1;
       DeleteMe = TRUE;
       return SUCCESS;
@@ -775,6 +780,7 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
         // different elements. Therefore, shifting all tau by a constant can improve the numerical accuracy for
         // exp function!    
         else {
+            max_tau = 0.0;
             for (i = 0; i <= type; i++) {
                 if(max_tau < phys_tau[i]) max_tau = phys_tau[i];
             }
@@ -1096,6 +1102,7 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
         // different elements. Therefore, shifting all tau by a constant can improve the numerical accuracy for
         // exp function!    
         else {
+            max_tau = 0.0;
             for (i = 0; i < 3; i++) {
                 if(max_tau < phys_tau[i]) max_tau = phys_tau[i];
             }
@@ -1275,8 +1282,8 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
 
     // return in case we're out of photons
     // tau_delete isn't true, if number of photon > number of neutral atom
-    if ((*PP)->Photons < MinimumPhotonFlux*(solid_angle*Area_inv) || (*PP)->ColumnDensity > tau_delete) {
-    // if ((*PP)->Photons < MinimumPhotonFlux*(solid_angle*Area_inv) || (phys_tau_total > TAU_DELETE_PHOTON))  
+    // if ((*PP)->Photons < MinimumPhotonFlux*(solid_angle*Area_inv) || (*PP)->ColumnDensity > tau_delete) 
+    if ((*PP)->Photons < MinimumPhotonFlux*(solid_angle*Area_inv) || (phys_tau_total > TAU_DELETE_PHOTON)) { 
     //if ((*PP)->Photons < MinimumPhotonFlux*(solid_angle*Area_inv)) 
       if (DEBUG > 1) {
 	fprintf(stderr, "PP-Photons: %"GSYM" (%"GSYM"), PP->Radius: %"GSYM

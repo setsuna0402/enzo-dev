@@ -64,11 +64,26 @@ int grid::GrackleWrapper()
   g_grid_dimension = new Eint32[GridRank];
   g_grid_start = new Eint32[GridRank];
   g_grid_end = new Eint32[GridRank];
+
+/*
+  // original codes
   for (i = 0; i < GridRank; i++) {
     g_grid_dimension[i] = (Eint32) GridDimension[i];
     g_grid_start[i] = (Eint32) GridStartIndex[i];
     g_grid_end[i] = (Eint32) GridEndIndex[i];
   }
+*/
+
+// 16/09/2021: KH original code doesn't update ionisation state in ghost. 
+// Try to tell grackle to update ghost
+  for (i = 0; i < GridRank; i++) {
+    g_grid_dimension[i] = (Eint32) GridDimension[i];
+    g_grid_start[i] = (Eint32) 0;
+    g_grid_end[i] = (Eint32) GridDimension[i] - 1;
+    // g_grid_start[i] = (Eint32) GridStartIndex[i] - 3;
+    // g_grid_end[i] = (Eint32) GridEndIndex[i] + 3;
+  }
+
  
   /* Find fields: density, total energy, velocity1-3. */
  

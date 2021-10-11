@@ -34,7 +34,7 @@ int grid::RadiativeTransferXRays(PhotonPackageEntry **PP, FLOAT *dPXray, int cel
   float dP1 = 0.0;
 	
   // at most use all photons for photo-ionizations
-  if (tau > 29.9)   // original value 2.e1 
+  if (tau > 29.0)   // original value 2.e1 
     dPXray[species] = (1.0+BFLOAT_EPSILON) * (*PP)->Photons;
   else if (tau > 1.e-4) 
     dPXray[species] = min((*PP)->Photons*(1-expf(-tau)), (*PP)->Photons);
