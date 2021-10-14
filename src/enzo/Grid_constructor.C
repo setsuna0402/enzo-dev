@@ -167,6 +167,7 @@ grid::grid()
   SubgridMarker                   = NULL;
 
   MaximumkphIfront                = 0;
+  MaximumkpHeIIfront              = 0;
   IndexOfMaximumkph               = INT_UNDEFINED;
 
   /* Initialize top level parallelism information */
