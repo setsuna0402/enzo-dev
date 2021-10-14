@@ -100,7 +100,7 @@ int grid::InitializeRadiativeTransferFields()
       }  // loop over grid
 
   HasRadiation = FALSE;
-  MaximumkphIfront = 0;
-
+  MaximumkphIfront   = 0;
+  MaximumkpHeIIfront = 0;
   return SUCCESS;
 }
