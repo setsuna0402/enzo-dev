@@ -30,4 +30,5 @@ float MaximumkphIfront;
 float MaximumkpHeIIfront;
 
 int IndexOfMaximumkph;
+int IndexOfMaximumkpHeII;
 int OriginalProcessorNumber;
