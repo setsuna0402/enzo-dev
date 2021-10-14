@@ -417,6 +417,13 @@ float ReturnMaximumkphIfront(void) {
     return 0;
 };
 
+float ReturnMaximumkpHeIIfront(void) { 
+  if (MyProcessorNumber == ProcessorNumber)
+    return MaximumkpHeIIfront;
+  else
+    return 0;
+};
+
 /* Compares min/max radiation field to estimate if there is an
    ionization front present in this grid. */
 
