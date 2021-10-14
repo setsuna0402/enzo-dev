@@ -97,6 +97,8 @@ EXTERN int RadiativeTransferHIIRestrictedTimestep;
 EXTERN int RadiativeTransferAdaptiveTimestep;
 
 EXTERN float GlobalMaximumkphIfront;
+/*Maximum ionisation rate for HeII front*/
+EXTERN float GlobalMaximumkpHeIIfront;
 
 /* Angle (in degrees) to collimate radiation for PhotonSourceType = 2 */
 

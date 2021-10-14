@@ -158,6 +158,9 @@ struct TopGridData
   int FirstTimestepAfterRestart;
   int MovieTimestepCounter;
   float GlobalMaximumkphIfront;
+  // KH 2021/10/14: add parameter GlobalMaximumkpHeIIfront designed for HeII     front
+
+  float GlobalMaximumkpHeIIfront;
 
 };
 
