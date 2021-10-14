@@ -21,8 +21,13 @@ grid  **SubgridMarker; // pointers to first array elements of subgrids for each 
 int HasRadiation;
 
 // For adaptive timestep control while restricting the change in HII
-// to 50%, we need to record the minimum kph for which a ray passes
+// to 10%, we need to record the minimum kph for which a ray passes
 // through with a cumulative optical depth >0.1.
 float MaximumkphIfront;
+// For adaptive timestep control while restricting the change in HeII
+// to 10%, we need to record the minimum kph for which a ray passes
+// through with a cumulative optical depth >0.1.
+float MaximumkpHeIIfront;
+
 int IndexOfMaximumkph;
 int OriginalProcessorNumber;
