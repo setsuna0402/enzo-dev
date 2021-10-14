@@ -671,6 +671,22 @@ int EvolvePhotons(TopGridData *MetaData, LevelHierarchyEntry *LevelArray[],
     }
     END_PERF(12);
 
+    /* If we're using the HeII restricted timestep, get the global
+       maximum kpHeII in HeII-fronts. */
+    //KH : 2021/10/14 remember change RadiativeTransferHIIRestrictedTimestep
+    // to RadiativeTransferHeIIRestrictedTimestep
+    START_PERF();
+    if (RadiativeTransferHIIRestrictedTimestep) {
+      float LocalMaximumkpHeII = -1e20;
+      for (lvl = 0; lvl < MAX_DEPTH_OF_HIERARCHY-1; lvl++)
+	for (Temp = LevelArray[lvl]; Temp; Temp = Temp->NextGridThisLevel)
+	  LocalMaximumkpHeII = max(LocalMaximumkpHeII,
+				Temp->GridData->ReturnMaximumkpHeIIfront());
+      LocalMaximumkpHeII = CommunicationMaxValue(LocalMaximumkpHeII);
+      MetaData->GlobalMaximumkpHeIIfront = LocalMaximumkpHeII;
+    }
+    END_PERF(13);
+
 #ifdef DEBUG
     for (lvl = 0; lvl < MAX_DEPTH_OF_HIERARCHY; lvl++)
       for (Temp = LevelArray[lvl]; Temp; Temp = Temp->NextGridThisLevel)
@@ -704,7 +720,7 @@ int EvolvePhotons(TopGridData *MetaData, LevelHierarchyEntry *LevelArray[],
 	Temp->GridData->InitializePhotonPackages();
   }
 #endif
-  END_PERF(13);
+  END_PERF(14);
 
 #ifdef REPORT_PERF
   if (debug) printf("EvolvePhotons: total time = %g\n", ReturnWallTime()-ep0);
