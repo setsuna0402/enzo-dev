@@ -278,8 +278,21 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
  
   CalculateCrossSection(PP, sigma, LengthUnits, nSecondaryHII, nSecondaryHeII);  //sigma in cm^2 * LengthUnits
   
+  // Original Enzo, when type = xray, CalculateCrossSection doesn't initialise sigma...
+  /*
   MinTauIfront = MIN_TAU_IFRONT / (sigma[type] / LengthUnits);  // absorb sigma
   tau_delete = TAU_DELETE_PHOTON / (sigma[type] / LengthUnits); // and make dimensions cm^-2
+  */
+  // KH 2021/10/16 : 
+  // For Xray, choose HeII absorptio as the threshold
+  if (type == XRAYS) {
+    MinTauIfront = MIN_TAU_IFRONT / (sigma[2] / LengthUnits);  // absorb sigma
+    tau_delete = TAU_DELETE_PHOTON / (sigma[2] / LengthUnits); // and make dimensions cm^-2
+  }
+  else {
+    MinTauIfront = MIN_TAU_IFRONT / (sigma[type] / LengthUnits);  // absorb sigma
+    tau_delete = TAU_DELETE_PHOTON / (sigma[type] / LengthUnits); // and make dimensions cm^-2
+  }
 
   // solid angle associated with package (= 4 Pi/N_package[on this level])
   uint64_t Hlevel = (*PP)->level, res = 2L, BRP = 12L;
@@ -1021,8 +1034,9 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
 	        // tau = dN*sigma[i];
             // The original code doesn't match the comment (Update Column Densities from all species)
             // Move this subroutine to here to update the ColumnDensity from all species (HI, HeI, HeII) 
+            // KH 15/10/2021: Change to record HeII ColumnDensity (code on the bottom)
             // Update Column Densities from all species
-            (*PP)->ColumnDensity += thisDensity * ddr * LengthUnits;
+            // (*PP)->ColumnDensity += thisDensity * ddr * LengthUnits;
             // If the number of photon is higher than the number of HI/HeI/HeII, try to keep the conservation of photon.
             // The original routine will overkill the photon when tau is large and Nphoton > NHI/NHeI/NHeII
             // when Nphoton/NHI = 1.000000002, the maximun possible tau is around 20.
@@ -1149,6 +1163,10 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
                 }
             }
         }
+        // KH 15/10/2021:
+        // Update Column Densities for HeII
+        (*PP)->ColumnDensity += thisDensity * ddr * LengthUnits;
+
 /* // Ezno original routine
         // Loop over absorbers 
         for (i = 0; i < 3; i++) {   //##### for TraceSpectrum test 3 -> 1
@@ -1246,7 +1264,10 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
     /* Keep track of the maximum hydrogen photo-ionization rate in the
        I-front, so we can calculate the maximum ionization timescale
        for timestepping purposes. */
-
+    // KH 2021/10/16 Note: In original code, ColumnDensity is HeII ColumnDensity
+    // and MinTauIfront is miscalculated
+    // Also, the cross section for HI for Xray is relatively small
+    // So, I don't know why the original code considers Xray's effects for I-front....
     if (RadiativeTransferHIIRestrictedTimestep)
       if (type == iHI || type == XRAYS) {
 	if ((*PP)->ColumnDensity > MinTauIfront) {
@@ -1256,7 +1277,23 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
 	  } // ENDIF max
 	} // ENDIF tau > min_tau (I-front)
       } // ENDIF type==iHI || Xrays
-      
+
+     // KH 2021/10/16: 
+     /* Keep track of the maximum HeII photo-ionization rate in the
+       HeII-front, so we can calculate the maximum ionization timescale
+       for timestepping purposes. */
+    // modify RadiativeTransferHIIRestrictedTimestep to RadiativeTransferHeIIIRestrictedTimestep 
+    // Later
+    if (RadiativeTransferHIIRestrictedTimestep)
+      if (type == iHeII || type == XRAYS) {
+	if ((*PP)->ColumnDensity > MinTauIfront) {
+	  if (BaryonField[kphNum[iHeII]][index] > this->MaximumkpHeIIfront) {
+	    this->MaximumkpHeIIfront = BaryonField[kphNum[iHeII]][index];
+	    this->IndexOfMaximumkpHeII = index;
+	  } // ENDIF max
+	} // ENDIF tau > min_tau (HeII-front)
+      } // ENDIF type==iHeII || Xrays
+     
     /* Acceleration due to radiation pressure */
 
     // Remember:  dA = [~] * dP * Energy / Density * r_hat
