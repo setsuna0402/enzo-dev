@@ -69,6 +69,7 @@ int RadiativeTransferReadParameters(FILE *fptr)
   RadiativeTransferPeriodicBoundary           = FALSE;
   RadiativeTransferFLDCallOnLevel             = 0;
   RadiativeTransferHIIRestrictedTimestep      = FALSE;
+  RadiativeTransferHeIIIRestrictedTimestep      = FALSE;
   RadiativeTransferAdaptiveTimestep           = FALSE;
   RadiativeTransferHydrogenOnly               = FALSE;
   RadiativeTransferTraceSpectrum              = FALSE;
@@ -138,6 +139,8 @@ int RadiativeTransferReadParameters(FILE *fptr)
 		  &RadiativeTransferSourceBeamAngle);
     ret += sscanf(line, "RadiativeTransferHIIRestrictedTimestep = %"ISYM, 
 		  &RadiativeTransferHIIRestrictedTimestep);
+    ret += sscanf(line, "RadiativeTransferHeIIIRestrictedTimestep = %"ISYM, 
+		  &RadiativeTransferHeIIIRestrictedTimestep);
     ret += sscanf(line, "RadiativeTransferAdaptiveTimestep = %"ISYM, 
 		  &RadiativeTransferAdaptiveTimestep);
     ret += sscanf(line, "RadiativeTransferHydrogenOnly = %"ISYM, 

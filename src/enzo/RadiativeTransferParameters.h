@@ -90,6 +90,10 @@ EXTERN int RadiativeTransferFLDCallOnLevel;
 
 EXTERN int RadiativeTransferHIIRestrictedTimestep;
 
+/* Flag to use timestepping to restrict HeIII fraction change to 50% */
+
+EXTERN int RadiativeTransferHeIIIRestrictedTimestep;
+
 /* Flag to use adaptive timestepping for ray tracing.  However this
    removes the time-derivative from the radiative transfer
    equation. */
