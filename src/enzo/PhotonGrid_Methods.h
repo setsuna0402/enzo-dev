@@ -24,6 +24,10 @@ void DeleteSubgridMarker() { delete [] SubgridMarker; SubgridMarker = NULL; };
 				  float Ifront_kph);
    float ComputePhotonTimestepTau(float DensityUnits, float LengthUnits,
 				  float VelocityUnits, float aye);
+/* Photons: Computes photon timestep based on HeIII ionisation*/
+   float ComputePhotonTimestepHeIII(float DensityUnits, float LengthUnits,
+				  float VelocityUnits, float aye, 
+				  float HeIIfront_kph);
 
 /* Photons: return number of PhotonPackages. */
 
