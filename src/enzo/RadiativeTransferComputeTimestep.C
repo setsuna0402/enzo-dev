@@ -32,7 +32,7 @@
 #include "CommunicationUtilities.h"
 #include "phys_constants.h"
 
-#define MAX_NUMBER_CROSS_CELL 1.1
+#define MAX_NUMBER_CROSS_CELL 0.5
 
 extern int LevelCycleCount[MAX_DEPTH_OF_HIERARCHY];
 //int LastTimestepUseHII = FALSE;
@@ -173,6 +173,23 @@ int RadiativeTransferComputeTimestep(LevelHierarchyEntry *LevelArray[],
 	        }
         }
     }
+
+    // KH 2021/10/17 :
+    // modify RadiativeTransferHIIRestrictedTimestep -> RadiativeTransferHeIIIRestrictedTimestep
+    // Later
+    // Calculate timestep by limiting to a max change in HeIII
+    if (RadiativeTransferHIIRestrictedTimestep) {
+        for (l = 0; l < MAX_DEPTH_OF_HIERARCHY-1; l++) {
+	        for (Temp = LevelArray[l]; Temp; Temp = Temp->NextGridThisLevel) {
+	            ThisPhotonDT = Temp->GridData->
+	            ComputePhotonTimestepHeIII(DensityUnits, LengthUnits, VelocityUnits, 
+				                        afloat, MetaData->GlobalMaximumkpHeIIfront);
+	            if (ThisPhotonDT > lowerLimit)
+	            dtPhoton = min(dtPhoton, ThisPhotonDT);
+	        }
+        }
+    }
+
   // Calculate timestep by limiting to a max change in intensity
   // (proportional to the I-front speed)
     if (RadiativeTransferAdaptiveTimestep == 2)
