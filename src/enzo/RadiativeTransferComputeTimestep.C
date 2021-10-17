@@ -139,7 +139,8 @@ int RadiativeTransferComputeTimestep(LevelHierarchyEntry *LevelArray[],
   }
 */
 
-  if (RadiativeTransferHIIRestrictedTimestep || RadiativeTransferAdaptiveTimestep == 2) {
+  if (RadiativeTransferHIIRestrictedTimestep || RadiativeTransferAdaptiveTimestep == 2 ||
+      RadiativeTransferHeIIIRestrictedTimestep) {
     if (LastPhotonDT[0] < 0 || LastPhotonDT[1] < 0) {
         for (l = 0; l < MAX_DEPTH_OF_HIERARCHY-1; l++) {
             for (Temp = LevelArray[l]; Temp; Temp = Temp->NextGridThisLevel) {
@@ -178,7 +179,7 @@ int RadiativeTransferComputeTimestep(LevelHierarchyEntry *LevelArray[],
     // modify RadiativeTransferHIIRestrictedTimestep -> RadiativeTransferHeIIIRestrictedTimestep
     // Later
     // Calculate timestep by limiting to a max change in HeIII
-    if (RadiativeTransferHIIRestrictedTimestep) {
+    if (RadiativeTransferHeIIIRestrictedTimestep) {
         for (l = 0; l < MAX_DEPTH_OF_HIERARCHY-1; l++) {
 	        for (Temp = LevelArray[l]; Temp; Temp = Temp->NextGridThisLevel) {
 	            ThisPhotonDT = Temp->GridData->
@@ -213,7 +214,7 @@ int RadiativeTransferComputeTimestep(LevelHierarchyEntry *LevelArray[],
 	     dtPhoton, LastPhotonDT[0], LastPhotonDT[1],
 	     dtLevelAbove/dtPhoton); 
 
-    if (RadiativeTransferHIIRestrictedTimestep)
+    if (RadiativeTransferHIIRestrictedTimestep || RadiativeTransferHeIIIRestrictedTimestep)
       if (LastPhotonDT[0] > 0 && LastPhotonDT[1] > 0 && 
 	  dtPhoton < unchangedLimit) {
 	AvgLastTimestep = sqrt(LastPhotonDT[0] * LastPhotonDT[1]);

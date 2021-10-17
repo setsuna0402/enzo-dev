@@ -676,7 +676,7 @@ int EvolvePhotons(TopGridData *MetaData, LevelHierarchyEntry *LevelArray[],
     //KH : 2021/10/14 remember change RadiativeTransferHIIRestrictedTimestep
     // to RadiativeTransferHeIIRestrictedTimestep
     START_PERF();
-    if (RadiativeTransferHIIRestrictedTimestep) {
+    if (RadiativeTransferHeIIIRestrictedTimestep) {
       float LocalMaximumkpHeII = -1e20;
       for (lvl = 0; lvl < MAX_DEPTH_OF_HIERARCHY-1; lvl++)
 	for (Temp = LevelArray[lvl]; Temp; Temp = Temp->NextGridThisLevel)

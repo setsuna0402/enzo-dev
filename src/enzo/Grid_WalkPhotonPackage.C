@@ -1264,12 +1264,24 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
     /* Keep track of the maximum hydrogen photo-ionization rate in the
        I-front, so we can calculate the maximum ionization timescale
        for timestepping purposes. */
-    // KH 2021/10/16 Note: In original code, ColumnDensity is HeII ColumnDensity
+    /*
+    // Original enzo code
+    if (RadiativeTransferHIIRestrictedTimestep)
+      if (type == iHI || type == XRAYS) {
+	if ((*PP)->ColumnDensity > MinTauIfront) {
+	  if (BaryonField[kphNum[iHI]][index] > this->MaximumkphIfront) {
+	    this->MaximumkphIfront = BaryonField[kphNum[iHI]][index];
+	    this->IndexOfMaximumkph = index;
+	  } // ENDIF max
+	} // ENDIF tau > min_tau (I-front)
+      } // ENDIF type==iHI || Xrays
+    */
+   // KH 2021/10/16 Note: In original code, ColumnDensity is HeII ColumnDensity
     // and MinTauIfront is miscalculated
     // Also, the cross section for HI for Xray is relatively small
     // So, I don't know why the original code considers Xray's effects for I-front....
     if (RadiativeTransferHIIRestrictedTimestep)
-      if (type == iHI || type == XRAYS) {
+      if (type == iHI) {
 	if ((*PP)->ColumnDensity > MinTauIfront) {
 	  if (BaryonField[kphNum[iHI]][index] > this->MaximumkphIfront) {
 	    this->MaximumkphIfront = BaryonField[kphNum[iHI]][index];
@@ -1284,7 +1296,7 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
        for timestepping purposes. */
     // modify RadiativeTransferHIIRestrictedTimestep to RadiativeTransferHeIIIRestrictedTimestep 
     // Later
-    if (RadiativeTransferHIIRestrictedTimestep)
+    if (RadiativeTransferHeIIIRestrictedTimestep)
       if (type == iHeII || type == XRAYS) {
 	if ((*PP)->ColumnDensity > MinTauIfront) {
 	  if (BaryonField[kphNum[iHeII]][index] > this->MaximumkpHeIIfront) {
