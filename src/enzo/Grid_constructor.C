@@ -169,6 +169,7 @@ grid::grid()
   MaximumkphIfront                = 0;
   MaximumkpHeIIfront              = 0;
   IndexOfMaximumkph               = INT_UNDEFINED;
+  IndexOfMaximumkpHeII            = INT_UNDEFINED;
 
   /* Initialize top level parallelism information */
   for (i=0; i<MAX_DIMENSION; i++) {

@@ -204,6 +204,8 @@ int grid::FinalizeRadiationFields(void)
 
    if(this->IndexOfMaximumkph >= 0)
      this->MaximumkphIfront /= (factor * BaryonField[HINum][IndexOfMaximumkph]);
+   if(this->IndexOfMaximumkpHeII >= 0)
+     this->MaximumkpHeIIfront /= (0.25 * factor * BaryonField[HeIINum][IndexOfMaximumkpHeII]);
 
 #endif /* TRANSFER */  
   
