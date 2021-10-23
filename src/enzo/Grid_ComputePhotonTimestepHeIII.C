@@ -3,14 +3,14 @@
 /
 /  GRID CLASS (COMPUTE TIME STEP FOR RADIATIVE TRANSFER)
 /
-/  written by: John Wise
-/  date:       September, 2009
+/  written by: Edward Leong
+/  date:       October, 2021
 /  modified1:
 /
 /  PURPOSE: Calculates the photon timestep by restricting the change in
-/           ionizing hydrogen to 50% in cells with radiation and optical
-/           depths greater than 0.5, so we capture the I-front evolution
-/           correctly.
+/           ionizing HeIII to 50% in cells with radiation and optical
+/           depths greater than 0.5, so we capture the HeII-front evolution
+/           correctly. Inheriting from Grid_ComputePhotonTimestepHII.C
 /
 /  RETURNS:
 /    dt   - photon timestep

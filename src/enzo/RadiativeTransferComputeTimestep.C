@@ -4,7 +4,7 @@
 /
 /  written by: John Wise
 /  date:       March, 2009
-/  modified1:
+/  modified1: October 2021, Edward Leong (add HeIII Ionisation restriction)
 /
 / PURPOSE:
 /
@@ -160,6 +160,7 @@ int RadiativeTransferComputeTimestep(LevelHierarchyEntry *LevelArray[],
         dtPhoton = min(dtPhoton, dtPhotonSafety);
         fprintf(stderr, "dtPhotonSafety = %g ", dtPhotonSafety);
         fprintf(stderr, "MetaData->GlobalMaximumkphIfront = %g \n", MetaData->GlobalMaximumkphIfront);
+        fprintf(stderr, "MetaData->GlobalMaximumkpHeIIfront = %g \n", MetaData->GlobalMaximumkpHeIIfront);
     }
 
     // Calculate timestep by limiting to a max change in HII
@@ -227,7 +228,7 @@ int RadiativeTransferComputeTimestep(LevelHierarchyEntry *LevelArray[],
 // KH 2021/8/3: Only update LastPhotonDT if GlobalMaximumkphIfront > tiny_number
     // if (dtPhoton < unchangedLimit) 
     if ((dtPhoton < unchangedLimit) && 
-        (MetaData->GlobalMaximumkphIfront > tiny_number || dtPhotonSafety >= unchangedLimit )) {
+        (MetaData->GlobalMaximumkphIfront > tiny_number || MetaData->GlobalMaximumkpHeIIfront > tiny_number  || dtPhotonSafety >= unchangedLimit )) {
       // Store dtPhoton before modifying it based on the next topgrid timestep
       LastPhotonDT[1] = LastPhotonDT[0];
       LastPhotonDT[0] = dtPhoton;  

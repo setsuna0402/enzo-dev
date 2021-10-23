@@ -5,6 +5,7 @@
 /  written by: Tom Abel
 /  date:       May 2004
 /  modified1:  November 2005 by John Wise (parallelized it)
+/  modified2:  October 2021 by Edward Leong (add HeIII ionisation restrictions)
 /                
 /
 /  PURPOSE:
@@ -120,9 +121,9 @@ int EvolvePhotons(TopGridData *MetaData, LevelHierarchyEntry *LevelArray[],
   bool FirstTime = true;
 
 #ifdef REPORT_PERF
-  double ep0, tt0, tt1, PerfCounter[14];
+  double ep0, tt0, tt1, PerfCounter[15];
   ep0 = ReturnWallTime();
-  for (int i = 0; i < 14; i++)
+  for (int i = 0; i < 15; i++)
     PerfCounter[i] = 0;
 #endif
 
@@ -729,7 +730,8 @@ int EvolvePhotons(TopGridData *MetaData, LevelHierarchyEntry *LevelArray[],
     if (MyProcessorNumber == i) {
 
       printf("P%d:", MyProcessorNumber);
-      fpcol(PerfCounter, 14, 14, stdout);
+      // fpcol(PerfCounter, 14, 14, stdout);
+      fpcol(PerfCounter, 15, 15, stdout);
       fflush(stdout);
     }
   }
