@@ -130,7 +130,7 @@ float grid::ComputePhotonTimestepHII(float DensityUnits, float LengthUnits,
 	
 	//tau = sigma_dx * BaryonField[HINum][index];
 	if (BaryonField[kphHINum][index] <= Ifront_kph &&
-	    BaryonField[kphHINum][index] > 0) {
+	    BaryonField[kphHINum][index] > tiny_number) {
 
 	  logtem = min( max( log(temperature[index]), logtem0 ), logtem9 );
 	  tidx = min( nbins-1, max(1, int((logtem - logtem0) / dlogtem)+1) );
@@ -158,6 +158,7 @@ float grid::ComputePhotonTimestepHII(float DensityUnits, float LengthUnits,
 	     kr2 * BaryonField[HIINum][index] * BaryonField[DeNum][index]) +
 	    a3inv * BaryonField[HINum][index] * BaryonField[kphHINum][index];
 */
+
 	  HIIdot = a3inv *
 	    (kr1 * BaryonField[HINum ][index] * BaryonField[DeNum][index] -
 	     kr2 * BaryonField[HIINum][index] * BaryonField[DeNum][index]) +
@@ -203,7 +204,7 @@ float grid::ComputePhotonTimestepHII(float DensityUnits, float LengthUnits,
       for (i = GridStartIndex[0]; i <= GridEndIndex[0]; i++, index++) {
 
 	if (BaryonField[kphHINum][index] <= Ifront_kph &&
-	    BaryonField[kphHINum][index] > 0) {
+	    BaryonField[kphHINum][index] > tiny_number) {
 
 	  i0 = max(i-1, GridStartIndex[0]);
 	  i1 = min(i+1, GridEndIndex[1]);
