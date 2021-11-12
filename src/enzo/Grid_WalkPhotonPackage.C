@@ -681,11 +681,13 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
             // MAX_TAU = - ln(1-NHI/P) log1p(x) = ln(1+x)
             // Unit of (*PP)->Photons :  number_of_photon / pow(LengthUnits,3)   (#)
             // if((*PP)->Photons * slice_factor2 * pow(LengthUnits,3) > (0.2 * thisDensity * phys_cell_volume)) 
-            // if((phys_tau[i] > 1.0) && ((*PP)->Photons * slice_factor2 > (thisDensity * CellVolume / (1.0 * RaysPerCell)))) 
+            // if((phys_tau[i] > 1.0) && ((*PP)->Photons * slice_factor2 > (thisDensity * CellVolume / (1.0 * RaysPerCell))))  
             // KH 2021/08/13 : Consider recombination effect  
-             if((Ion_fraction > 0.1) &&
+             
+            if((Ion_fraction > 0.1) &&
                (((*PP)->Photons * slice_factor2) > 
                 (recombination_threshold  * CellVolume / (1.0 * RaysPerCell)))) {
+             
                 /*
                 fprintf(stderr, "KH photon check!");
                 fprintf(stderr, "(*PP)->Photons = %g ", (*PP)->Photons);
@@ -694,14 +696,17 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
                 fprintf(stderr, "phys_cell_volume = %g ", phys_cell_volume);
                 fprintf(stderr, "before phys_tau[%lld] = %g ", i, phys_tau[i]);
                 */
-                //phys_tau[i] = min(phys_tau[i], 
-                //            (-1.0 * log1p(-1.0 * (thisDensity * CellVolume / (1.0 * RaysPerCell)) / 
-                //                           ((*PP)->Photons * slice_factor2 ))));
+                /*
+                phys_tau[i] = min(phys_tau[i], 
+                            (-1.0 * log1p(-1.0 * (thisDensity * CellVolume / (1.0 * RaysPerCell)) / 
+                            ((*PP)->Photons * slice_factor2 ))));
+                */
                 phys_tau[i] = min(phys_tau[i], 
                 (-1.0 * log1p(-1.0 * (recombination_threshold * CellVolume / (1.0 * RaysPerCell)) / 
-                 ((*PP)->Photons * slice_factor2 ))));
+                ((*PP)->Photons * slice_factor2 ))));
                 // fprintf(stderr, "after phys_tau[%lld] = %g \n", i, phys_tau[i]);
             }
+            
             phys_tau_total += phys_tau[i];
         }
         // If the total optical depth is small, use the original enzo method 
@@ -815,15 +820,22 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
                else {
                    original_alive_prob[i] = exp(-1.0 * phys_tau[i]);
                }
-            } 
-            normal_factor  = original_alive_prob[0] * original_alive_prob[1];
-            normal_factor += original_alive_prob[0] * original_alive_prob[2];
-            normal_factor += original_alive_prob[1] * original_alive_prob[2];
-            absorb_prob[0] = original_alive_prob[1] * original_alive_prob[2] / normal_factor ;
-            absorb_prob[0] = min(0.9999999999999, absorb_prob[0]);  // Avoid probability become zero.
-            absorb_prob[1] = original_alive_prob[0] * original_alive_prob[2] / normal_factor ;
-            absorb_prob[1] = min(0.9999999999999, absorb_prob[1]);  // Avoid probability become zero.
+            }
+            if (type == iHeI) {
+                normal_factor  = original_alive_prob[0] + original_alive_prob[1];
+                absorb_prob[0] = original_alive_prob[1] / normal_factor ;
+                absorb_prob[0] = min(0.9999999999999, absorb_prob[0]);  // Avoid probability become zero.
+                absorb_prob[1] = original_alive_prob[0] / normal_factor ;
+                absorb_prob[1] = min(0.9999999999999, absorb_prob[1]);  // Avoid probability become zero.
+            }
             if (type == iHeII) {
+                normal_factor  = original_alive_prob[0] * original_alive_prob[1];
+                normal_factor += original_alive_prob[0] * original_alive_prob[2];
+                normal_factor += original_alive_prob[1] * original_alive_prob[2];
+                absorb_prob[0] = original_alive_prob[1] * original_alive_prob[2] / normal_factor ;
+                absorb_prob[0] = min(0.9999999999999, absorb_prob[0]);  // Avoid probability become zero.
+                absorb_prob[1] = original_alive_prob[0] * original_alive_prob[2] / normal_factor ;
+                absorb_prob[1] = min(0.9999999999999, absorb_prob[1]);  // Avoid probability become zero.
                 absorb_prob[2] = original_alive_prob[0] * original_alive_prob[1] / normal_factor ;
                 absorb_prob[2] = min(0.9999999999999, absorb_prob[2]);  // Avoid probability become zero.
             }
@@ -888,6 +900,7 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
             if (taua > 20.0) break;
         }    
 */
+        // KH 2021/10/24
         // for (i = 0; i <= type; i++) dP += dPi[i];  // original enzo code: forget to do geo_correction..
         for (i = 0; i <= type; i++) dP += dPi[i] * slice_factor2;
         (*PP)->ColumnDensity += thisDensity * ddr * LengthUnits; //in cgs
@@ -1331,8 +1344,8 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
 
     // return in case we're out of photons
     // tau_delete isn't true, if number of photon > number of neutral atom
-    // if ((*PP)->Photons < MinimumPhotonFlux*(solid_angle*Area_inv) || (*PP)->ColumnDensity > tau_delete) 
-    if ((*PP)->Photons < MinimumPhotonFlux*(solid_angle*Area_inv) || (phys_tau_total > TAU_DELETE_PHOTON)) { 
+    // if ((*PP)->Photons < MinimumPhotonFlux*(solid_angle*Area_inv) || (*PP)->ColumnDensity > tau_delete || (phys_tau_total > TAU_DELETE_PHOTON))  
+    if ((*PP)->Photons < MinimumPhotonFlux*(solid_angle*Area_inv) || (phys_tau_total > TAU_DELETE_PHOTON)) {
     //if ((*PP)->Photons < MinimumPhotonFlux*(solid_angle*Area_inv)) 
       if (DEBUG > 1) {
 	fprintf(stderr, "PP-Photons: %"GSYM" (%"GSYM"), PP->Radius: %"GSYM
