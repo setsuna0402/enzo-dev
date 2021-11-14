@@ -8,6 +8,8 @@
 /  modified1: John Regan
 /             Moved to its own function and file from
 /             WalkPhotonPackage
+/  modified2: Ka Hou Leong
+              
 /
 /  PURPOSE: Calculate the ionisations and photon absorbed by HI, HeI and HeII
 /
@@ -63,15 +65,26 @@ int grid::RadiativeTransferIonization(PhotonPackageEntry **PP, FLOAT *dPi, int c
   // BaryonField[gammaNum] needs to be normalised
   // see Grid_FinalizeRadiationField.C
   BaryonField[gammaNum][cellindex] += dP1*excessrate[species];
+/*
+   * This scheme creates numerical errors
+   * When Ionisation rate and density of neutral atoms are both very small
+   * The result of normalisation (Ion rate = Ion rate / number density) 
+   * becomes unpredictable
+   * Also, setting ionisation rate to tiny_number, in fact, magnify the ionisation rate.
+   * Notice that, if the radiation source is very dim and the system is neutral,
+   * This scheme may be useful. 
+*/
+/*
 #if !DEVCODE
-  /* 
+    
    * Check to make sure we are not just dealing with very small numbers 
    * that could cause problems later on
-   */
+   
   if(BaryonField[kphNum[species]][cellindex] < tiny_number) 
     BaryonField[kphNum[species]][cellindex] = tiny_number;
   if(BaryonField[gammaNum][cellindex] < tiny_number) 
     BaryonField[gammaNum][cellindex] = tiny_number;
 #endif
+*/
   return SUCCESS;
 }
