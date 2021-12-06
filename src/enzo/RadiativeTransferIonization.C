@@ -77,13 +77,14 @@ int grid::RadiativeTransferIonization(PhotonPackageEntry **PP, FLOAT *dPi, int c
 /*
 #if !DEVCODE
     
-   * Check to make sure we are not just dealing with very small numbers 
-   * that could cause problems later on
+   // Check to make sure we are not just dealing with very small numbers 
+   // that could cause problems later on
    
   if(BaryonField[kphNum[species]][cellindex] < tiny_number) 
     BaryonField[kphNum[species]][cellindex] = tiny_number;
   if(BaryonField[gammaNum][cellindex] < tiny_number) 
     BaryonField[gammaNum][cellindex] = tiny_number;
+
 #endif
 */
   return SUCCESS;
