@@ -62,7 +62,9 @@ int RadiativeTransferComputeTimestep(LevelHierarchyEntry *LevelArray[],
   }
 
   // Restrict the increase in dtPhoton to this factor
-  const float MaxDTChange = 30.0;
+  // const float MaxDTChange = 30.0;
+  // KH 10/12/2021 : Set MaxDTChange = 2.0 30 May be too aggressive 
+  const float MaxDTChange = 2.0;
   // Restrict the decrease in dtPhoton to this factor
   const float MaxDTDecrease = 1e-10;
 
