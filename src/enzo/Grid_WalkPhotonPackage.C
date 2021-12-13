@@ -821,6 +821,19 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
                    original_alive_prob[i] = exp(-1.0 * phys_tau[i]);
                }
             }
+            /*
+            normal_factor  = original_alive_prob[0] * original_alive_prob[1];
+            normal_factor += original_alive_prob[0] * original_alive_prob[2];
+            normal_factor += original_alive_prob[1] * original_alive_prob[2];
+            absorb_prob[0] = original_alive_prob[1] * original_alive_prob[2] / normal_factor ;
+            absorb_prob[0] = min(0.9999999999999, absorb_prob[0]);  // Avoid probability become zero.
+            absorb_prob[1] = original_alive_prob[0] * original_alive_prob[2] / normal_factor ;
+            absorb_prob[1] = min(0.9999999999999, absorb_prob[1]);  // Avoid probability become zero.
+            if (type == iHeII) {
+                absorb_prob[2] = original_alive_prob[0] * original_alive_prob[1] / normal_factor ;
+                absorb_prob[2] = min(0.9999999999999, absorb_prob[2]);  // Avoid probability become zero.
+            }
+            */
             if (type == iHeI) {
                 normal_factor  = original_alive_prob[0] + original_alive_prob[1];
                 absorb_prob[0] = original_alive_prob[1] / normal_factor ;
@@ -839,6 +852,7 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
                 absorb_prob[2] = original_alive_prob[0] * original_alive_prob[1] / normal_factor ;
                 absorb_prob[2] = min(0.9999999999999, absorb_prob[2]);  // Avoid probability become zero.
             }
+
             for (i = 0; i <= type; i++) {
                 effect_tau[i] = max(0.0, -1.0 * log1p(-1.0 * absorb_prob[i]));    // log1p(x) = ln(1+x)
                 if(isnan(effect_tau[i])){
