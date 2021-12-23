@@ -75,8 +75,10 @@ int RadiativeTransferWriteParameters(FILE *fptr)
 	  RadiativeTransferSourceBeamAngle);
   fprintf(fptr, "RadiativeTransferHIIRestrictedTimestep    = %"ISYM"\n", 
 	  RadiativeTransferHIIRestrictedTimestep);
-  fprintf(fptr, "RadiativeTransferHeIIIRestrictedTimestep    = %"ISYM"\n", 
+  fprintf(fptr, "RadiativeTransferHeIIIRestrictedTimestep  = %"ISYM"\n", 
 	  RadiativeTransferHeIIIRestrictedTimestep);
+  fprintf(fptr, "RadiativeTransferHorizonStartTime         = %"FSYM"\n", 
+	  RadiativeTransferHorizonStartTime);
   fprintf(fptr, "RadiativeTransferAdaptiveTimestep         = %"ISYM"\n",
 	  RadiativeTransferAdaptiveTimestep);
   fprintf(fptr, "RadiativeTransferHydrogenOnly             = %"ISYM"\n", 

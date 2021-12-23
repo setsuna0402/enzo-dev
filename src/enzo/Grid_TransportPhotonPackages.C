@@ -1,4 +1,5 @@
 #define DEBUG 0
+#define HORIZON_TEST 1
 #define MYPROC MyProcessorNumber == ProcessorNumber
 /***********************************************************************
 /
@@ -152,6 +153,12 @@ int grid::TransportPhotonPackages(int level, int finest_level,
   int prev_type = -1;
   float LightCrossingTime = RadiativeTransferRayMaximumLength * (VelocityUnits) /
     (clight * RadiativeTransferPropagationSpeedFraction); 
+#ifdef HORIZON_TEST
+  if ((RadiativeTransferHorizonStartTime >= 0.0) && 
+      ((PhotonTime - RadiativeTransferHorizonStartTime) > PFLOAT_EPSILON)) {
+    LightCrossingTime = min((PhotonTime - RadiativeTransferHorizonStartTime), LightCrossingTime);
+}
+#endif
   FLOAT EndTime;
  if (MYPROC && DEBUG) {
    printf("RadiativeTransferRayMaximumLength = %g\t  RadiativeTransferPropagationSpeedFraction= %g\n",  RadiativeTransferRayMaximumLength, RadiativeTransferPropagationSpeedFraction);

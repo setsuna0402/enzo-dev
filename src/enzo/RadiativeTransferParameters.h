@@ -94,6 +94,9 @@ EXTERN int RadiativeTransferHIIRestrictedTimestep;
 
 EXTERN int RadiativeTransferHeIIIRestrictedTimestep;
 
+/* The first radiation source shines at this moment. Use to calculate light horizon. */
+EXTERN float RadiativeTransferHorizonStartTime;
+
 /* Flag to use adaptive timestepping for ray tracing.  However this
    removes the time-derivative from the radiative transfer
    equation. */
