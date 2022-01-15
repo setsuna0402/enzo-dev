@@ -32,7 +32,7 @@
 #include "CommunicationUtilities.h"
 #include "phys_constants.h"
 
-#define MAX_NUMBER_CROSS_CELL 0.5
+#define MAX_NUMBER_CROSS_CELL 0.005
 
 extern int LevelCycleCount[MAX_DEPTH_OF_HIERARCHY];
 //int LastTimestepUseHII = FALSE;

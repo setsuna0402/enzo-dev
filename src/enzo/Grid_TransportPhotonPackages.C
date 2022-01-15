@@ -154,10 +154,14 @@ int grid::TransportPhotonPackages(int level, int finest_level,
   float LightCrossingTime = RadiativeTransferRayMaximumLength * (VelocityUnits) /
     (clight * RadiativeTransferPropagationSpeedFraction); 
 #ifdef HORIZON_TEST
-  if ((RadiativeTransferHorizonStartTime >= 0.0) && 
-      ((PhotonTime - RadiativeTransferHorizonStartTime) > PFLOAT_EPSILON)) {
-    LightCrossingTime = min((PhotonTime - RadiativeTransferHorizonStartTime), LightCrossingTime);
-}
+  if (RadiativeTransferHorizonStartTime >= 0.0) {
+    if ((PhotonTime - RadiativeTransferHorizonStartTime) > PFLOAT_EPSILON) {
+      LightCrossingTime = min((PhotonTime - RadiativeTransferHorizonStartTime), LightCrossingTime);
+    }
+    else {
+        LightCrossingTime = PFLOAT_EPSILON;
+    }
+  }
 #endif
   FLOAT EndTime;
  if (MYPROC && DEBUG) {
