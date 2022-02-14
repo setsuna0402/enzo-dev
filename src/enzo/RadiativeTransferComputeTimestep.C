@@ -32,7 +32,7 @@
 #include "CommunicationUtilities.h"
 #include "phys_constants.h"
 
-#define MAX_NUMBER_CROSS_CELL 0.5
+#define MAX_NUMBER_CROSS_CELL 0.00005
 
 extern int LevelCycleCount[MAX_DEPTH_OF_HIERARCHY];
 //int LastTimestepUseHII = FALSE;
@@ -172,8 +172,12 @@ int RadiativeTransferComputeTimestep(LevelHierarchyEntry *LevelArray[],
 	            ThisPhotonDT = Temp->GridData->
 	            ComputePhotonTimestepHII(DensityUnits, LengthUnits, VelocityUnits, 
 				                        afloat, MetaData->GlobalMaximumkphIfront);
-	            if (ThisPhotonDT > lowerLimit)
-	            dtPhoton = min(dtPhoton, ThisPhotonDT);
+	            if (ThisPhotonDT > lowerLimit) {
+                    dtPhoton = min(dtPhoton, ThisPhotonDT);
+                }
+                else {
+                    dtPhoton = min(dtPhoton, lowerLimit);
+                }
 	        }
         }
     }
@@ -188,9 +192,13 @@ int RadiativeTransferComputeTimestep(LevelHierarchyEntry *LevelArray[],
 	            ThisPhotonDT = Temp->GridData->
 	            ComputePhotonTimestepHeIII(DensityUnits, LengthUnits, VelocityUnits, 
 				                        afloat, MetaData->GlobalMaximumkpHeIIfront);
-	            if (ThisPhotonDT > lowerLimit)
-	            dtPhoton = min(dtPhoton, ThisPhotonDT);
-	        }
+	            if (ThisPhotonDT > lowerLimit) {
+                    dtPhoton = min(dtPhoton, ThisPhotonDT);
+                }       
+                else {
+                    dtPhoton = min(dtPhoton, lowerLimit);
+                }
+            }
         }
     }
 
@@ -202,8 +210,12 @@ int RadiativeTransferComputeTimestep(LevelHierarchyEntry *LevelArray[],
 	  ThisPhotonDT = Temp->GridData->
 	    ComputePhotonTimestepTau(DensityUnits, LengthUnits, VelocityUnits, 
 				     afloat);
-	  if (ThisPhotonDT > lowerLimit)
-	    dtPhoton = min(dtPhoton, ThisPhotonDT);
+      if (ThisPhotonDT > lowerLimit) {
+        dtPhoton = min(dtPhoton, ThisPhotonDT);
+      }       
+      else {
+        dtPhoton = min(dtPhoton, lowerLimit);
+      }
 	}
 
     dtPhoton = PhotonCourantFactor * CommunicationMinValue(dtPhoton);
