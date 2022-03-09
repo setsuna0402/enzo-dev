@@ -230,11 +230,12 @@ int RadiativeTransferComputeTimestep(LevelHierarchyEntry *LevelArray[],
 	     dtLevelAbove/dtPhoton); 
 
     if (RadiativeTransferHIIRestrictedTimestep || RadiativeTransferHeIIIRestrictedTimestep)
-      if (LastPhotonDT[0] > 0 && LastPhotonDT[1] > 0 && 
-	  dtPhoton < unchangedLimit) {
+      //if (LastPhotonDT[0] > 0 && LastPhotonDT[1] > 0 && 
+	  // dtPhoton < unchangedLimit)
+    
+      if (LastPhotonDT[0] > 0 && LastPhotonDT[1] > 0) { 
 	AvgLastTimestep = sqrt(LastPhotonDT[0] * LastPhotonDT[1]);
-	if (dtPhoton > MaxDTChange * AvgLastTimestep)
-	  dtPhoton = MaxDTChange * AvgLastTimestep;
+	  if (dtPhoton > MaxDTChange * AvgLastTimestep) dtPhoton = MaxDTChange * AvgLastTimestep;
       }
 
   // KH 03/08/2021: testing shorter dtPhoton

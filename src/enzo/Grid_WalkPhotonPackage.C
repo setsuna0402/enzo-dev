@@ -42,6 +42,7 @@
 #define MAX_COLUMN_DENSITY 1e25
 #define MIN_TAU_IFRONT 0.1
 #define TAU_DELETE_PHOTON 29.0        // Original value = 10.0
+// #define TAU_DELETE_PHOTON 10.0        // Original value = 10.0
 #define GEO_CORRECTION
 #define H_SPECIES           3         //Includes HI, HeI, HeII
 #define ALLSPECIES          6         //includes HI, HeI, HeII, H2I, H2II and HM
@@ -1358,8 +1359,8 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
 
     // return in case we're out of photons
     // tau_delete isn't true, if number of photon > number of neutral atom
-    // if ((*PP)->Photons < MinimumPhotonFlux*(solid_angle*Area_inv) || (*PP)->ColumnDensity > tau_delete || (phys_tau_total > TAU_DELETE_PHOTON))  
-    if ((*PP)->Photons < MinimumPhotonFlux*(solid_angle*Area_inv) || (phys_tau_total > TAU_DELETE_PHOTON)) {
+    // if ((*PP)->Photons < MinimumPhotonFlux*(solid_angle*Area_inv) || (*PP)->ColumnDensity > tau_delete || (phys_tau_total > TAU_DELETE_PHOTON))    
+    if ((*PP)->Photons < MinimumPhotonFlux*(solid_angle*Area_inv) || (phys_tau_total > TAU_DELETE_PHOTON)) {  
     //if ((*PP)->Photons < MinimumPhotonFlux*(solid_angle*Area_inv)) 
       if (DEBUG > 1) {
 	fprintf(stderr, "PP-Photons: %"GSYM" (%"GSYM"), PP->Radius: %"GSYM
