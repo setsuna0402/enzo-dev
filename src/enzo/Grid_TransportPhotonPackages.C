@@ -38,6 +38,8 @@ int FindField(int field, int farray[], int numfields);
 int GetUnits(float *DensityUnits, float *LengthUnits,
 	     float *TemperatureUnits, float *TimeUnits,
 	     float *VelocityUnits, FLOAT Time);
+int CosmologyComputeExpansionFactor(FLOAT time, FLOAT *a, FLOAT *dadt);
+
 
 int grid::TransportPhotonPackages(int level, int finest_level, 
 				  ListOfPhotonsToMove **PhotonsToMove, 
@@ -64,6 +66,12 @@ int grid::TransportPhotonPackages(int level, int finest_level,
   if (PhotonPackages->NextPackage == NULL)
     return SUCCESS;
 
+  // KH 2022/3/14
+  // Need expansion factor (a), copy from grid::ComputePhotonTimestepHII
+  FLOAT a = 1.0, dadt;
+  if (ComovingCoordinates) CosmologyComputeExpansionFactor(Time+0.5*dtFixed, &a, &dadt); 
+  float afloat = float(a);
+
   /* Get units. */
   double MassUnits, RT_Units;
   float LengthUnits, TimeUnits, TemperatureUnits, VelocityUnits, 
@@ -74,6 +82,15 @@ int grid::TransportPhotonPackages(int level, int finest_level,
   }
   MassUnits = (double) DensityUnits * POW(LengthUnits, 3.0);
   RT_Units = (double) TimeUnits * POW(LengthUnits, -3.0);
+
+
+  // KH 2022/3/14:
+  // VelocityUnit is independent on current_z
+  // It is dependent on z_initial
+  // So, c = lightspeed_proper / VelocityUnit is actually
+  // the comoving lightspeed in enzo unit at "z=z_initial"
+  // Need a factor of aye (aye = (1+z_init)/(1+z)) to 
+  // convert c to comoving lightspeed at current z.
 
   /* speed of light in code units. note this one is independent of
      a(t), and Modify the photon propagation speed by this
@@ -151,8 +168,18 @@ int grid::TransportPhotonPackages(int level, int finest_level,
   int AdvancePhotonPointer;
   int DeleteMe, DeltaLevel, PauseMe;
   int prev_type = -1;
-  float LightCrossingTime = RadiativeTransferRayMaximumLength * (VelocityUnits) /
-    (clight * RadiativeTransferPropagationSpeedFraction); 
+  // float LightCrossingTime = RadiativeTransferRayMaximumLength * (VelocityUnits) / (clight * RadiativeTransferPropagationSpeedFraction);
+  
+  // KH 2022/3/14:
+  // VelocityUnit is independent on current_z
+  // It is dependent on z_initial
+  // So, c = lightspeed_proper / VelocityUnit is actually
+  // the comoving lightspeed in enzo unit at "z=z_initial"
+  // Need a factor of aye (aye = (1+z_init)/(1+z)) to 
+  // convert c to comoving lightspeed at current z.
+  float LightCrossingTime = RadiativeTransferRayMaximumLength * afloat * (VelocityUnits) /
+  (clight * RadiativeTransferPropagationSpeedFraction); 
+
 #ifdef HORIZON_TEST
   if (RadiativeTransferHorizonStartTime >= 0.0) {
     if ((PhotonTime - RadiativeTransferHorizonStartTime) > PFLOAT_EPSILON) {

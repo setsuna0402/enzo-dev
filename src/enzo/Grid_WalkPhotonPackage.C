@@ -65,7 +65,7 @@ int GetUnits(float *DensityUnits, float *LengthUnits,
 	     float *TemperatureUnits, float *TimeUnits,
 	     float *VelocityUnits, FLOAT Time);
 
-//int CosmologyComputeExpansionFactor(FLOAT time, FLOAT *a, FLOAT *dadt);
+int CosmologyComputeExpansionFactor(FLOAT time, FLOAT *a, FLOAT *dadt);
 
 int grid::WalkPhotonPackage(PhotonPackageEntry **PP, 
 			    grid **MoveToGrid, grid *ParentGrid, grid *CurrentGrid, 
@@ -121,9 +121,9 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
   FLOAT Ion_fraction = 1.0;
   // KH 2021/8/12
   // Need expansion factor (a), copy from grid::ComputePhotonTimestepHII
-  // FLOAT a = 1.0, dadt;
-  // if (ComovingCoordinates) CosmologyComputeExpansionFactor(Time+0.5*dtFixed, &a, &dadt); 
-  // float afloat = float(a);
+  FLOAT a = 1.0, dadt;
+  if (ComovingCoordinates) CosmologyComputeExpansionFactor(Time+0.5*dtFixed, &a, &dadt); 
+  float afloat = float(a);
   // float a3inv = 1.0/(afloat*afloat*afloat);
   // float a6inv = a3inv * a3inv; 
  
@@ -555,8 +555,18 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
     ddr    = dr;
 
     // nor do we want transport longer than the grid timestep
-    ddr    = min(ddr, c*(EndTime-(*PP)->CurrentTime));
-    cdt = ddr * c_inv;
+    // ddr    = min(ddr, c*(EndTime-(*PP)->CurrentTime));
+    // cdt = ddr * c_inv;
+    // KH 2022/3/14:
+    // VelocityUnit is independent on current_z
+    // It is dependent on z_initial
+    // So, c = lightspeed_proper / VelocityUnit is actually
+    // the comoving lightspeed in enzo unit at "z=z_initial"
+    // Need a factor of aye (aye = (1+z_init)/(1+z)) to 
+    // convert c to comoving lightspeed at current z.   
+    ddr    = min(ddr, c*(EndTime-(*PP)->CurrentTime)/afloat);
+    cdt = ddr * c_inv * afloat;
+
 
     // Check for ray merging, only consider a fraction of the ray to
     // make r=PauseRadius and return.
