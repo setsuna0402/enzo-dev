@@ -138,6 +138,20 @@ int StarParticleRadTransfer(LevelHierarchyEntry *LevelArray[], int level,
 
       // if the source needs a beaming direction, define it here
       RadSource->Orientation    = NULL;
+      // KH 5/4/2022: set the Orientation for MBH to {0.0, 0.0, 1.0}
+      if (cstar->ReturnType() == MBH) {
+        float norm = 0.0;    // for normalization
+        RadSource->Orientation    = new float[3];
+        RadSource->Orientation[0] = 0.0;
+        RadSource->Orientation[1] = 0.0;
+        RadSource->Orientation[2] = 1.0;
+        for (int i = 0; i < MAX_DIMENSION; i++) {
+            norm += RadSource->Orientation[i] * RadSource->Orientation[i];
+        }
+        norm = sqrt(norm);
+        for (int i = 0; i < MAX_DIMENSION; i++) RadSource->Orientation[i] /= norm;
+      }
+
 
       if (GlobalRadiationSources->NextSource != NULL)
 	GlobalRadiationSources->NextSource->PreviousSource = RadSource;

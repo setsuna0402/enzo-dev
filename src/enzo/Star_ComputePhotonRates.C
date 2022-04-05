@@ -149,7 +149,7 @@ int Star::ComputePhotonRates(const float TimeUnits, int &nbins, float E[], doubl
         const int number_bins = 20;    // MAX_ENERGY_BINS = 20
         nbins = number_bins;
         XrayLuminosityFraction = 1.0;
-        double GQ_weight[number_bins] = {3.15087663e+14, 6.36525437e+14, 7.56561967e+14, 6.36525437e+14, 3.15087663e+14, 8.53601122e+14, 1.72440527e+15, 2.04959515e+15, 1.72440527e+15, 8.53601122e+14, 7.62203685e+15, 1.70856566e+16, 2.50465076e+16, 3.07832530e+16, 3.37850775e+16, 3.37850775e+16, 3.07832530e+16, 2.50465076e+16, 1.70856566e+16, 7.62203685e+15};
+        double GQ_weight[number_bins] = {3.15087663e+14, 6.36525437e+14, 7.56561967e+14, 6.36525437e+14, 3.15087663e+14, 8.53601122e+14, 1.72440527e+15, 2.04959515e+15, 1.72440527e+15, 8.53601122e+14, 7.62203685e+15, 1.70856566e+16, 2.50465076e+16, 3.07832530e+16, 3.37850775e+16, 3.37850775e+16, 3.07832530e+16, 2.50465076e+16, 1.70856566e+16, 7.62203685e+15};  // 5(HI)+5(HeI)+10(HeII)
         /* Original ENZO setting
         E[0] = 2000.0; //2keV
         E[1] = 0.0;
@@ -182,8 +182,11 @@ int Star::ComputePhotonRates(const float TimeUnits, int &nbins, float E[], doubl
         double L_solar = 2.388e45;    // eV/s
         double L_edd   = 0.0;          // eV/s
         double L_total = 5.329276413387563e+58;  // eV/s Exact luminosity of QSO
-        double Lo_spectrum = 1.236708e43;    // eV/s/Hz
-        float  spectral_index = 1.73;
+        // double Lo_spectrum = 1.236708e43;    // eV/s/Hz for QSO
+        double Lo_spectrum = 1.03140938373e+41;    // eV/s/Hz for 21cm
+
+        // float  spectral_index = 1.73;
+        float  spectral_index = 0.5;     // for 21cm
         float  reduced_factor = 0.01;   
         double Mass_Scaling_facter = 1e6;   // The Input Mass of MBHs has been reducded. Put the scaling back when calculate the luminosity. Default :1e8
         // L_edd = 3.2 * 10^4 * (Mass/Mass_solar) * L_solar
@@ -193,7 +196,8 @@ int Star::ComputePhotonRates(const float TimeUnits, int &nbins, float E[], doubl
         for(int j=0; j<nbins; j++)
         {
             // Number of photon = (pow(13.6/energy, spectral_index) / energy) * (Lo_spectrum * L_edd/L_total) * GQ_weight    GQ_weight : weight computed by GQ.
-            Q[j] = (QSO_Luminosity(E[j], L_factor, spectral_index) / E[j]) * GQ_weight[j]; 
+            // Q[j] = (QSO_Luminosity(E[j], L_factor, spectral_index) / E[j]) * GQ_weight[j]; // use eddington luminosity
+            Q[j] = (QSO_Luminosity(E[j], Lo_spectrum, spectral_index) / E[j]) * GQ_weight[j]; // use a given luminosity
         }
         for(int j=nbins; j<MAX_ENERGY_BINS; j++)
         {
