@@ -59,11 +59,14 @@ int grid::Shine(RadiationSourceEntry *RadiationSource)
 
   /* If using a beamed source, calculate the minimum z-component of
      the ray normal (always beamed in the polar coordinate). */
-
   if (RS->Type == Beamed)
     min_beam_zvec = cos(pi * RadiativeTransferSourceBeamAngle / 180.0);
 
-  int stype = RS->EnergyBins;
+  // KH 5/4/2022: allow RadiativeTransferSourceBeamAngle works for MBH particle
+  if (RS->Type == MBH)
+    min_beam_zvec = cos(pi * RadiativeTransferSourceBeamAngle / 180.0);
+
+ int stype = RS->EnergyBins;
 
   /* At most how many new Photon Packages should be allocated and
      created?  */
@@ -195,7 +198,9 @@ int grid::Shine(RadiationSourceEntry *RadiationSource)
     /* Loop over each Ray */
     for (ray=0; ray<BasePackages; ray++) {
 
-      if (RS->Type == Beamed) {
+      // if (RS->Type == Beamed) 
+  // KH 5/4/2022: allow RadiativeTransferSourceBeamAngle works for MBH particle
+      if ((RS->Type == Beamed) || (RS->Type == MBH)) {
 	pix2vec_nest64((int64_t) (1 << min_level), (int64_t) ray, vec);
 	// Dot product of the source orientation (already normalized
 	// to 1) and ray normal must be greater than cos(beaming angle)
