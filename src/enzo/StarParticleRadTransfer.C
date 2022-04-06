@@ -1,3 +1,4 @@
+#define BEAMED_MBH 1
 /***********************************************************************
 /
 /  CONVERT SHINE PARTICLE INTO RADIATIVE TRANSFER PARTICLE
@@ -136,10 +137,11 @@ int StarParticleRadTransfer(LevelHierarchyEntry *LevelArray[], int level,
 	RadSource->SED[j]    = Q[j];
       }
 
-      // if the source needs a beaming direction, define it here
-      RadSource->Orientation    = NULL;
+#ifdef BEAMED_MBH
       // KH 5/4/2022: set the Orientation for MBH to {0.0, 0.0, 1.0}
+      // John suggestion:modify RS->Type to Beamed
       if (cstar->ReturnType() == MBH) {
+        RadSource->Type           = Beamed;
         float norm = 0.0;    // for normalization
         RadSource->Orientation    = new float[3];
         RadSource->Orientation[0] = 0.0;
@@ -151,7 +153,10 @@ int StarParticleRadTransfer(LevelHierarchyEntry *LevelArray[], int level,
         norm = sqrt(norm);
         for (int i = 0; i < MAX_DIMENSION; i++) RadSource->Orientation[i] /= norm;
       }
-
+#else
+      // if the source needs a beaming direction, define it here
+      RadSource->Orientation    = NULL;
+#endif
 
       if (GlobalRadiationSources->NextSource != NULL)
 	GlobalRadiationSources->NextSource->PreviousSource = RadSource;
