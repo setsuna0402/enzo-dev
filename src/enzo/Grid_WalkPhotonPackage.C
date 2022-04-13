@@ -1028,7 +1028,9 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
 
         // Shull & van Steenberg (1985)
         if (RadiationXRaySecondaryIon) {
-	        xx = max(fields[HIIField][index] / (fields[HIIField][index] + fields[HIIField][index]), 1e-4);
+            // KH 2022_4_13: found a bug in the denominator (bug: HII+HII)
+            //  change denominator HII+HII->HI+HII 
+	        xx = max(fields[HIIField][index] / (fields[HIField][index] + fields[HIIField][index]), 1e-4);
 	        heat_factor = 0.9971 * (1 - powf(1 - powf(xx, 0.2663f), 1.3163));
         	ion2_factor[HIField] = 0.3908 * nSecondaryHII * powf(1 - powf(xx, 0.4092f), 1.7592f);
 	        ion2_factor[HeIField] = 0.0554 * nSecondaryHeII * powf(1 - powf(xx, 0.4614f), 1.6660f);
