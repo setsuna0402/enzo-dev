@@ -8,6 +8,9 @@
 /  modified1: John Regan
 /             Moved to its own function and file from
 /             WalkPhotonPackage
+/  modified2: Ka Hou Leong
+/             Rewrite the function to handle RadiationXRaySecondaryIon
+/             (secondary ionisation)
 /
 /  PURPOSE: Calculate the ionisations and xray photons absorbed by HI, HeI and HeII
 /
@@ -45,17 +48,25 @@ int grid::RadiativeTransferXRays(PhotonPackageEntry **PP, FLOAT *dPXray, int cel
   dP1 = dPXray[species] * geo_correction;
   // KH 2021/7/30 : try to use the whole photonpackage to ionising
   // dP1 = (*PP)->Photons * geo_correction;
-
-  // contributions to the photoionization rate is over whole timestep
-  // units are (1/LengthUnits^3)*(1/CodeTime)
-  // This needs to be normalised - see Grid_FinalizeRadiationFields.C
-  BaryonField[kphNum[species]][cellindex] += dP1 * photonrate * ion2_factor[species];
+  if (RadiationXRaySecondaryIon) {
+    // KH 2022/4/16 : the unit of ion2_factor is identical to the unit of dP1
+    // compute ion2_factor through the fitting formula in Shull & van Steenberg (1985)
+    BaryonField[kphNum[species]][cellindex] += photonrate * ion2_factor[species];
+    // compute heat_factor through the fitting formula in Shull & van Steenberg (1985)
+    BaryonField[gammaNum][cellindex] += dP1 * excessrate[species] * heat_factor;
+  }
+  else {
+    // contributions to the photoionization rate is over whole timestep
+    // units are (1/LengthUnits^3)*(1/CodeTime)
+    // This needs to be normalised - see Grid_FinalizeRadiationFields.C
+    BaryonField[kphNum[species]][cellindex] += dP1 * photonrate;
 	
-  // the heating rate is just the number of photo ionizations times
-  // the excess energy; units are eV/CodeTime*((1/LengthUnits^3)); 
-  // check Grid_FinalizeRadiationFields.C
-  BaryonField[gammaNum][cellindex] += dP1 * excessrate[species] * heat_factor;
-  
+    // the heating rate is just the number of photo ionizations times
+    // the excess energy; units are eV/CodeTime*((1/LengthUnits^3)); 
+    // check Grid_FinalizeRadiationFields.C
+    BaryonField[gammaNum][cellindex] += dP1 * excessrate[species];
+ 
+  }
   return SUCCESS;
 }
 

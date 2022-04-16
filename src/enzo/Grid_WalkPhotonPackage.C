@@ -6,7 +6,9 @@
 /
 /  written by: Tom Abel
 /  date:       August, 2003
-/  modified1:
+/  modified1: Ka Hou Leong  date:       April, 2022
+/             Fixed bugs, supported probabilistic absorption model
+/             Modified the procedure for RadiationXRaySecondaryIon  
 /
 /  PURPOSE: This is the heart of the radiative transfer algorithm.
 /    All the work is done here. Trace particles, split them, compute
@@ -275,8 +277,22 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
 
   float nSecondaryHII = 1, nSecondaryHeII = 1;
   float xx, heat_factor = 1.0;
-  float ion2_factor[] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
- 
+  // KH 2022/4/16 : For secondary ionisations 0: HI 1:HeI 2:HeII
+  float ion2_factor[] = {1.0, 1.0, 1.0};
+  // KH 2022/4/16 : For secondary ionisations 0: HI 1:HeI 2:HeII
+  // The number of primary energy caused by HI/HeI/HeII ionisations
+  // Unit : same as (*PP)->Photons;
+  float num_pri_electron[] = {0.0, 0.0, 0.0};
+  float temp_num_one = 0.0;
+  float temp_num_two = 0.0;
+  //KH 2022/4/16 : For secondary ionisations 0: HI 1:HeI 2:HeII
+  // the secondary ionisation of HeII is not important 
+  // [0][0] : 
+  // the ratio of the number of primary electrons (from a HI atom) to 
+  //              the number of the secondarily ionised HI atoms
+  // [0][1] : HI primary electron to secondarily ionised HeI atoms
+  float electron_ion_frac[3][2] = {{0.0,0.0}, {0.0,0.0}, {0.0,0.0}};
+  
   CalculateCrossSection(PP, sigma, LengthUnits, nSecondaryHII, nSecondaryHeII);  //sigma in cm^2 * LengthUnits
   
   // Original Enzo, when type = xray, CalculateCrossSection doesn't initialise sigma...
@@ -378,12 +394,33 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
    
   /* For X-ray photons, we do heating and ionization for HI/HeI/HeII
      in one shot; see Table 2 of Shull & van Steenberg (1985) */
+  /*
+    // KH 2022/4/16 :
+    In Shull & van Steenberg (1985), with a given HI ionisation fraction,
+    the input energy is the energy of "a primary electron" 
+    and the outputs are the amounts of energy
+    of "a primary electron" deposited as heat, ionization and excitation.
+    The energy of a promary electron should be the energy of a ionising 
+    photon reduced by the binding energy (the amounts of energy needs to ionise an atom).
+    I think the original code may misunderstood 
+    the context of Shull & van Steenberg (1985).
+  */
+  /*
+  // Original enzo
   if ((*PP)->Type == XRAYS) {
     for (i = 0; i < 3; i++) //Loop over IONISING_HI -> IONISING_HeII 
       if (RadiationXRaySecondaryIon)
 	ExcessEnergyfactor[i] = factor1 * (*PP)->Energy;
       else
 	ExcessEnergyfactor[i] = factor1 * ((*PP)->Energy - EnergyThresholds[i]);
+    if (RadiationXRayComptonHeating) 
+      TemperatureField = this->GetTemperatureFieldNumberForComptonHeating();
+  }
+  */
+  // KH 2022/4/16 : ExcessEnergyfactor : energy of the primary electron (free electron)
+  if ((*PP)->Type == XRAYS) {
+    //Loop over IONISING_HI -> IONISING_HeII
+    for (i = 0; i < 3; i++) ExcessEnergyfactor[i] = factor1 * ((*PP)->Energy - EnergyThresholds[i]);
     if (RadiationXRayComptonHeating) 
       TemperatureField = this->GetTemperatureFieldNumberForComptonHeating();
   }
@@ -1026,21 +1063,29 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
       /************************************************************/
     case XRAYS:
 
+        // KH 2022/4/16 : Use another procedure to handle Secondary Ionisation 
+        // The original algorithm may misunderstood Shull & van Steenberg (1985) 
         // Shull & van Steenberg (1985)
+        /*
         if (RadiationXRaySecondaryIon) {
-            // KH 2022_4_13: found a bug in the denominator (bug: HII+HII)
+            // KH 2022/4/13: found a bug in the denominator (bug: HII+HII)
             //  change denominator HII+HII->HI+HII 
 	        xx = max(fields[HIIField][index] / (fields[HIField][index] + fields[HIIField][index]), 1e-4);
+            // KH 2022/4/16 : energy deposition factor of heat only depends on ionisation fraction 
 	        heat_factor = 0.9971 * (1 - powf(1 - powf(xx, 0.2663f), 1.3163));
+            // KH 2022/4/16 : nSecondaryHII and nSecondaryHeII are mis-calculated.
+            // Use an alternative to handle ionisation fraction below.
         	ion2_factor[HIField] = 0.3908 * nSecondaryHII * powf(1 - powf(xx, 0.4092f), 1.7592f);
 	        ion2_factor[HeIField] = 0.0554 * nSecondaryHeII * powf(1 - powf(xx, 0.4614f), 1.6660f);
         }
-        else {
+        */
+        if (RadiationXRaySecondaryIon == 0){
 	        if(secondary_flag) {
 	            fprintf(stderr, "%s: WARNING - Secondary ionisations NOT turned on\n", __FUNCTION__);
 	            secondary_flag = 0;
 	        }
         }
+        
         dP = 0.0; 
         ResetdPi(dPi);
         // KH 2021/7/20
@@ -1100,6 +1145,20 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
         }
         // If the absorption is small, use the original routine to calculate the absorption.
         if (phys_tau_total < 3.0e-10) {
+            // ignore the secondary ionisation effect due to the very weak absorption
+            if (RadiationXRaySecondaryIon) { // Shull & van Steenberg (1985)
+	            heat_factor  = 1.0;
+                num_pri_electron[0] = min((*PP)->Photons*phys_tau[0], (*PP)->Photons) * slice_factor2; 
+                num_pri_electron[1] = min((*PP)->Photons*phys_tau[1], (*PP)->Photons) * slice_factor2; 
+                num_pri_electron[2] = min((*PP)->Photons*phys_tau[2], (*PP)->Photons) * slice_factor2;
+                // the total number of ionised HI
+                ion2_factor[HIField  ] = num_pri_electron[0] ;
+                // the total number of ionised HeI
+                ion2_factor[HeIField ] = num_pri_electron[1] ;
+                 // the total number of ionised HeII (No secondary effect)
+                ion2_factor[HeIIField] = num_pri_electron[2] ;
+            }
+ 
             /* Loop over absorbers */
             for (i = 0; i < 3; i++) {   //##### for TraceSpectrum test 3 -> 1
                 tau = (float) phys_tau[i];
@@ -1137,6 +1196,41 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
             for (i = 0; i < 3; i++) {
                 effect_tau[i] = max(0.0, -1.0 * log1p(-1.0 * absorb_prob[i]));    // log1p(x) = ln(1+x)
             }
+            if (RadiationXRaySecondaryIon) {
+                // Shull & van Steenberg (1985)
+                xx = max(fields[HIIField][index] / (fields[HIField][index] + fields[HIIField][index]), 1e-4);
+	            heat_factor  = 0.9971 * (1 - powf(1 - powf(xx, 0.2663f), 1.3163));
+                temp_num_one = 0.3908 * powf(1 - powf(xx, 0.4092f), 1.7592f);
+                temp_num_two = 0.0554 * powf(1 - powf(xx, 0.4614f), 1.6660f);
+                num_pri_electron[HIField  ] = (*PP)->Photons * absorb_prob[0] * slice_factor2; 
+                num_pri_electron[HeIField ] = (*PP)->Photons * absorb_prob[1] * slice_factor2; 
+                num_pri_electron[HeIIField] = (*PP)->Photons * absorb_prob[2] * slice_factor2;
+                // HI electron -> HI secondary Ionisation
+                electron_ion_frac[0][0] = (((*PP)->Energy - 13.6)/13.6) * temp_num_one;
+                // HI electron -> HeI secondary Ionisation
+                electron_ion_frac[0][1] = (((*PP)->Energy - 13.6)/24.6) * temp_num_two;
+                // HeI electron -> HI secondary Ionisation
+                electron_ion_frac[1][0] = (((*PP)->Energy - 24.6)/13.6) * temp_num_one;
+                // HeI electron -> HeI secondary Ionisation
+                electron_ion_frac[1][1] = (((*PP)->Energy - 24.6)/24.6) * temp_num_two;
+                // HeII electron -> HI secondary Ionisation
+                electron_ion_frac[2][0] = (((*PP)->Energy - 54.4)/13.6) * temp_num_one;
+                // HeII electron -> HeI secondary Ionisation
+                electron_ion_frac[2][1] = (((*PP)->Energy - 54.4)/24.6) * temp_num_two;
+                // the total number of ionised HI
+                ion2_factor[HIField  ] = num_pri_electron[0] * electron_ion_frac[0][0] + 
+                                       num_pri_electron[1] * electron_ion_frac[1][0] +
+                                       num_pri_electron[2] * electron_ion_frac[2][0] +
+                                       num_pri_electron[0] ;
+                // the total number of ionised HeI
+                ion2_factor[HeIField ] = num_pri_electron[0] * electron_ion_frac[0][1] + 
+                                       num_pri_electron[1] * electron_ion_frac[1][1] +
+                                       num_pri_electron[2] * electron_ion_frac[2][1] +
+                                       num_pri_electron[1] ;
+                 // the total number of ionised HeII (No secondary effect)
+                ion2_factor[HeIIField] = num_pri_electron[2] ;
+            }
+ 
             // Run RadiativeTransferXRays by effect_tau
              /* Loop over absorbers */
             for (i = 0; i < 3; i++) {   //##### for TraceSpectrum test 3 -> 1
@@ -1190,6 +1284,41 @@ int grid::WalkPhotonPackage(PhotonPackageEntry **PP,
             absorb_prob[2] = min(0.9999999999999, absorb_prob[2]);  // Avoid probability become zero.
             for (i = 0; i < 3; i++) {
                 effect_tau[i] = max(0.0, -1.0 * log1p(-1.0 * absorb_prob[i]));    // log1p(x) = ln(1+x)
+            }
+            // kH 2022/4/16 : calculate the total amounts of secondary ionisation atoms
+            if (RadiationXRaySecondaryIon) {
+                // Shull & van Steenberg (1985)
+                xx = max(fields[HIIField][index] / (fields[HIField][index] + fields[HIIField][index]), 1e-4);
+	            heat_factor  = 0.9971 * (1 - powf(1 - powf(xx, 0.2663f), 1.3163));
+                temp_num_one = 0.3908 * powf(1 - powf(xx, 0.4092f), 1.7592f);
+                temp_num_two = 0.0554 * powf(1 - powf(xx, 0.4614f), 1.6660f);
+                num_pri_electron[HIField  ] = (*PP)->Photons * absorb_prob[0] * slice_factor2; 
+                num_pri_electron[HeIField ] = (*PP)->Photons * absorb_prob[1] * slice_factor2; 
+                num_pri_electron[HeIIField] = (*PP)->Photons * absorb_prob[2] * slice_factor2;
+                // HI electron -> HI secondary Ionisation
+                electron_ion_frac[0][0] = (((*PP)->Energy - 13.6)/13.6) * temp_num_one;
+                // HI electron -> HeI secondary Ionisation
+                electron_ion_frac[0][1] = (((*PP)->Energy - 13.6)/24.6) * temp_num_two;
+                // HeI electron -> HI secondary Ionisation
+                electron_ion_frac[1][0] = (((*PP)->Energy - 24.6)/13.6) * temp_num_one;
+                // HeI electron -> HeI secondary Ionisation
+                electron_ion_frac[1][1] = (((*PP)->Energy - 24.6)/24.6) * temp_num_two;
+                // HeII electron -> HI secondary Ionisation
+                electron_ion_frac[2][0] = (((*PP)->Energy - 54.4)/13.6) * temp_num_one;
+                // HeII electron -> HeI secondary Ionisation
+                electron_ion_frac[2][1] = (((*PP)->Energy - 54.4)/24.6) * temp_num_two;
+                // the total number of ionised HI
+                ion2_factor[HIField  ] = num_pri_electron[0] * electron_ion_frac[0][0] + 
+                                       num_pri_electron[1] * electron_ion_frac[1][0] +
+                                       num_pri_electron[2] * electron_ion_frac[2][0] +
+                                       num_pri_electron[0] ;
+                // the total number of ionised HeI
+                ion2_factor[HeIField ] = num_pri_electron[0] * electron_ion_frac[0][1] + 
+                                       num_pri_electron[1] * electron_ion_frac[1][1] +
+                                       num_pri_electron[2] * electron_ion_frac[2][1] +
+                                       num_pri_electron[1] ;
+                 // the total number of ionised HeII (No secondary effect)
+                ion2_factor[HeIIField] = num_pri_electron[2] ;
             }
             // Run RadiativeTransferIonization by effect_tau
             for (i = 0; i < 3; i++) {
