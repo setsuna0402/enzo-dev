@@ -34,11 +34,17 @@ float ReturnValuesFromSpectrumTable(float ColumnDensity, float dColumnDensity, i
 // KH 2021/6/28
 // Need to be embedded into ENZO coding structure after testing.
 // Define the spectrum function. L = Lo * (13.6/energy) ^ index  (eV/s/Hz)
+// KH 2022/5/10
+// L is multipled by exp(-energy/threshold)
 double QSO_Luminosity(const float &energy, const double &Lo, const float &index)
 {
     double L_nu = 0.0;
     double nu_HI = 13.6;    // eV
-    L_nu = Lo * pow(nu_HI / energy, index);     //  eV/Hz/s
+    // 1E6 K => 87eV (K_B * 1E6 ~ 86.17 eV)
+    const double energy_threshold = 87.0; 
+    // L_nu = Lo * pow(nu_HI / energy, index);     //  eV/Hz/s
+    //  eV/Hz/s
+    L_nu = Lo * pow(nu_HI / energy, index) * exp(-energy/energy_threshold);
 
     return L_nu;
 }
