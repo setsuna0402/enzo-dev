@@ -266,8 +266,8 @@ int Star::ComputePhotonRates(const float TimeUnits, int &nbins, float E[], doubl
             // Q[j] = (QSO_Luminosity_powlaw(E[j], L_factor, spectral_index) / E[j]) * GQ_weight[j]; // use eddington luminosity
             // Q[j] = (QSO_Luminosity_powlaw(E[j], Lo_powlaw, spectral_index) / E[j]) * GQ_weight[j]; // use a given luminosity
             // power law + blackboday radiation
-            Q[j] = QSO_Luminosity_powlaw_bbr(E[j], Lo_powlaw, Lo_blackbody,
-                    spectral_index, 0.9, 0.1);
+            Q[j] = (QSO_Luminosity_powlaw_bbr(E[j], Lo_powlaw, Lo_blackbody,
+                    spectral_index, 0.9, 0.1) / E[j]) * GQ_weight[j];
         }
         for(int j=nbins; j<MAX_ENERGY_BINS; j++)
         {
