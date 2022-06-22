@@ -36,15 +36,52 @@ float ReturnValuesFromSpectrumTable(float ColumnDensity, float dColumnDensity, i
 // Define the spectrum function. L = Lo * (13.6/energy) ^ index  (eV/s/Hz)
 // KH 2022/5/10
 // L is multipled by exp(-energy/threshold)
-double QSO_Luminosity(const float &energy, const double &Lo, const float &index)
+double QSO_Luminosity_powlaw(const float &energy, const double &Lo, const float &index)
 {
     double L_nu = 0.0;
     double nu_HI = 13.6;    // eV
+    const double Temperature_threshold = 1.0e6; //K
+    const double Boltzmann_constant = 8.617333262145e-5;   // eV / Kelvin
     // 1E6 K => 87eV (K_B * 1E6 ~ 86.17 eV)
-    const double energy_threshold = 87.0; 
-    // L_nu = Lo * pow(nu_HI / energy, index);     //  eV/Hz/s
+    const double energy_threshold = Temperature_threshold * Boltzmann_constant; 
+    L_nu = Lo * pow(energy / nu_HI, index);     //  eV/Hz/s
     //  eV/Hz/s
-    L_nu = Lo * pow(nu_HI / energy, index) * exp(-energy/energy_threshold);
+    // L_nu = Lo * pow(energy / nu_HI, index) * exp(-energy/energy_threshold);
+
+    return L_nu;
+}
+
+
+// KH 2022/6/21 support blackbody radiation spectrum
+// input : energy (eV);Lo (ev/(s*Hz))(power law);Lo_bbr (1/eV^2) (blackbody)
+//         index (power index for power law, L ~ (E/E_HI)^(index)) 
+//         frac_pow, frac_body : ratio between powlaw and bbr
+double QSO_Luminosity_powlaw_bbr(const float &energy, const double &Lo, const double &Lo_bbr,
+       const float &index, float frac_pow, float frac_body)
+{
+    double L_nu = 0.0;
+    double L_nu_pow = 0.0;
+    double L_nu_bbr = 0.0;
+    // weighting between power law and black body radiation.
+    // Lv = Lo * (frac_pow * "powlaw" + frac_body * "black body")
+    // double frac_pow  = 0.9;  
+    // double frac_body = 0.1;
+    // Normalisation
+    double temp = frac_pow + frac_body;
+    frac_pow  = frac_pow  / temp;
+    frac_body = frac_body / temp;
+    double nu_HI = 13.6;    // eV
+    const double Temperature_threshold = 1.0e6; //K
+    const double Boltzmann_constant = 8.617333262145e-5;   // eV / Kelvin
+    // 1E6 K => 87eV (K_B * 1E6 ~ 86.17 eV)
+    const double energy_threshold = Temperature_threshold * Boltzmann_constant; 
+    L_nu_pow = Lo * pow(energy / nu_HI, index);     //  eV/Hz/s
+    //  eV/Hz/s
+    // L_nu = Lo * pow(energy / nu_HI, index) * exp(-energy/energy_threshold);
+    // KH 20/6/2022: add blackbody spectrum
+    // eV/Hz/s
+    L_nu_bbr = Lo_bbr * (pow(energy, 3.0)/expm1(energy/energy_threshold));
+    L_nu = frac_pow * L_nu_pow + frac_body * L_nu_bbr;
 
     return L_nu;
 }
@@ -188,22 +225,49 @@ int Star::ComputePhotonRates(const float TimeUnits, int &nbins, float E[], doubl
         double L_solar = 2.388e45;    // eV/s
         double L_edd   = 0.0;          // eV/s
         double L_total = 5.329276413387563e+58;  // eV/s Exact luminosity of QSO
-        // double Lo_spectrum = 1.236708e43;    // eV/s/Hz for QSO
-        double Lo_spectrum = 1.03140938373e+41;    // eV/s/Hz for 21cm
+        // double Lo_powlaw = 1.236708e43;    // eV/s/Hz for QSO
+        double Lo_powlaw = 1.03140938373e+41;    // eV/s/Hz for 21cm
+        double N_dot_photon = 0.0;                // Total emitted photon per second
 
-        // float  spectral_index = 1.73;
-        float  spectral_index = 0.5;     // for 21cm
+        float  spectral_index = -1.73;
+        // float  spectral_index = -0.5;     // for 21cm
+        // float  spectral_index = 0.5;     // for 21cm
         float  reduced_factor = 0.01;   
         double Mass_Scaling_facter = 1e6;   // The Input Mass of MBHs has been reducded. Put the scaling back when calculate the luminosity. Default :1e8
         // L_edd = 3.2 * 10^4 * (Mass/Mass_solar) * L_solar
         L_edd = reduced_factor * 3.2 * 10000.0 * this->Mass * Mass_Scaling_facter * L_solar;   // eV/s
         // L_edd = 3.2 * 10000.0 * this->Mass * Mass_Scaling_facter * L_solar;   // eV/s
-        double L_factor = Lo_spectrum * (L_edd / L_total);    // L_factor = Lo_spectrum * L_edd / L_total
+        double L_factor = Lo_powlaw * (L_edd / L_total);    // L_factor = Lo_powlaw * L_edd / L_total
+        // KH 6/21/2022: for black body radiation
+        const double Temperature_threshold = 1.0e6; //K
+        const double Boltzmann_constant = 8.617333262145e-5;   // eV / Kelvin
+        // 1E6 K => 87eV (K_B * 1E6 ~ 86.17 eV)
+        const double energy_threshold = Temperature_threshold * Boltzmann_constant;
+        double Lo_blackbody  = 0.0;    // 1/(eV^2) "bbr luminosity" at E = 13.6 
+        double temp_integral = 0.0;
+
+        N_dot_photon = 0.0;
+        // Computing the total number of ionisation photon, based on power law 
         for(int j=0; j<nbins; j++)
         {
-            // Number of photon = (pow(13.6/energy, spectral_index) / energy) * (Lo_spectrum * L_edd/L_total) * GQ_weight    GQ_weight : weight computed by GQ.
-            // Q[j] = (QSO_Luminosity(E[j], L_factor, spectral_index) / E[j]) * GQ_weight[j]; // use eddington luminosity
-            Q[j] = (QSO_Luminosity(E[j], Lo_spectrum, spectral_index) / E[j]) * GQ_weight[j]; // use a given luminosity
+            N_dot_photon += (QSO_Luminosity_powlaw(E[j], Lo_powlaw, spectral_index) / E[j]) * GQ_weight[j]; // use a given luminosity
+        }
+        // Estimate Lo_blackbody (1/eV^2), expm1 = exp(x) - 1
+        temp_integral = 0.0; 
+        for(int j=0; j<nbins; j++)
+        {
+            temp_integral += (pow(E[j], 2.0) / expm1(E[j]/energy_threshold)) * GQ_weight[j];
+        }
+        Lo_blackbody = N_dot_photon / temp_integral; 
+ 
+        for(int j=0; j<nbins; j++)
+        {
+            // Number of photon = (pow(13.6/energy, spectral_index) / energy) * (Lo_powlaw * L_edd/L_total) * GQ_weight    GQ_weight : weight computed by GQ.
+            // Q[j] = (QSO_Luminosity_powlaw(E[j], L_factor, spectral_index) / E[j]) * GQ_weight[j]; // use eddington luminosity
+            // Q[j] = (QSO_Luminosity_powlaw(E[j], Lo_powlaw, spectral_index) / E[j]) * GQ_weight[j]; // use a given luminosity
+            // power law + blackboday radiation
+            Q[j] = QSO_Luminosity_powlaw_bbr(E[j], Lo_powlaw, Lo_blackbody,
+                    spectral_index, 0.9, 0.1);
         }
         for(int j=nbins; j<MAX_ENERGY_BINS; j++)
         {

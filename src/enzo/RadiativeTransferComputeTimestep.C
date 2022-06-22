@@ -33,6 +33,7 @@
 #include "phys_constants.h"
 
 #define MAX_NUMBER_CROSS_CELL 0.00005
+// #define MAX_NUMBER_CROSS_CELL 0.005
 
 extern int LevelCycleCount[MAX_DEPTH_OF_HIERARCHY];
 //int LastTimestepUseHII = FALSE;
@@ -219,7 +220,9 @@ int RadiativeTransferComputeTimestep(LevelHierarchyEntry *LevelArray[],
 	}
 
     dtPhoton = PhotonCourantFactor * CommunicationMinValue(dtPhoton);
-
+    
+    // just a test
+    // if (PhotonTime < 25.0) dtPhoton = min(dtPhoton, 0.005);
     /* Use the average because the minimum ionization timescale can
        fluctuate significantly.  It gets even worse if the dtPhoton is
        allowed to vary a lot (>factor of a few). */
