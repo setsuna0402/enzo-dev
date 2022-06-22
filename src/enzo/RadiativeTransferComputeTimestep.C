@@ -133,8 +133,15 @@ int RadiativeTransferComputeTimestep(LevelHierarchyEntry *LevelArray[],
 // RadiativeTransferTimestepVelocityLimit in km/s
   float dx_level, dx_ratio;
   float dtPhotonSafety = 10*huge_number;
-  float LightSpeed;
-  LightSpeed = RadiativeTransferPropagationSpeedFraction * (clight/VelocityUnits);
+  // KH 2022/6/22:
+  // VelocityUnit is independent on current_z
+  // It is dependent on z_initial
+  // So, c = lightspeed_proper / VelocityUnit is actually
+  // the comoving lightspeed in enzo unit at "z=z_initial"
+  // Need a factor of aye (aye = (1+z_init)/(1+z)) to 
+  // convert c to comoving lightspeed at current z.
+  float LightSpeed_a;
+  LightSpeed_a = RadiativeTransferPropagationSpeedFraction * (clight/VelocityUnits) / afloat;
 
 /*
   if (RadiativeTransferTimestepVelocityLevel >= 0) {
@@ -148,7 +155,7 @@ int RadiativeTransferComputeTimestep(LevelHierarchyEntry *LevelArray[],
         for (l = 0; l < MAX_DEPTH_OF_HIERARCHY-1; l++) {
             for (Temp = LevelArray[l]; Temp; Temp = Temp->NextGridThisLevel) {
                 ThisPhotonDT = afloat * MAX_NUMBER_CROSS_CELL * 
-                Temp->GridData->GetCellWidth(0, 0) / LightSpeed;
+                Temp->GridData->GetCellWidth(0, 0) / LightSpeed_a;
 /*
                  if (RadiativeTransferTimestepVelocityLevel >= 0) {
                     dx_ratio = dx_level / Temp->GridData->GetCellWidth(0, 0);
