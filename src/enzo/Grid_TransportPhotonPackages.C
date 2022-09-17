@@ -180,6 +180,7 @@ int grid::TransportPhotonPackages(int level, int finest_level,
   float LightCrossingTime = RadiativeTransferRayMaximumLength * afloat * (VelocityUnits) /
   (clight * RadiativeTransferPropagationSpeedFraction); 
 
+/* KH 2022/9/17 original horizon test
 #ifdef HORIZON_TEST
   if (RadiativeTransferHorizonStartTime >= 0.0) {
     if ((PhotonTime - RadiativeTransferHorizonStartTime) > PFLOAT_EPSILON) {
@@ -190,6 +191,28 @@ int grid::TransportPhotonPackages(int level, int finest_level,
     }
   }
 #endif
+*/
+  // KH 2022/9/17: testing
+  // allow photon crosses the horizon in luminal region
+  // the effect caused bu spectral distortion may appear.
+  
+#ifdef HORIZON_TEST
+  // 0.12 = 3Mpc/25Mpc. 3 Mpc is the luminal region's size.
+  float LuminalCrossingTime = 0.12 * afloat * (VelocityUnits) /
+  (clight * RadiativeTransferPropagationSpeedFraction);  
+  float Hybird_CrossingTime = 0.0;
+  if (RadiativeTransferHorizonStartTime >= 0.0) {
+    if ((PhotonTime - RadiativeTransferHorizonStartTime) > PFLOAT_EPSILON) {
+      Hybird_CrossingTime = max((PhotonTime - RadiativeTransferHorizonStartTime), LuminalCrossingTime);
+      LightCrossingTime = min(Hybird_CrossingTime, LightCrossingTime);
+    }
+    else {
+        LightCrossingTime = PFLOAT_EPSILON;
+    }
+  }
+#endif
+
+
   FLOAT EndTime;
  if (MYPROC && DEBUG) {
    printf("RadiativeTransferRayMaximumLength = %g\t  RadiativeTransferPropagationSpeedFraction= %g\n",  RadiativeTransferRayMaximumLength, RadiativeTransferPropagationSpeedFraction);
