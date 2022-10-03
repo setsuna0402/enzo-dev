@@ -1,5 +1,6 @@
 #define DEBUG 0
-#define HORIZON_TEST 1
+#define HORIZON_TEST 0
+#define HORIZON_MPI_TEST 1
 #define MYPROC MyProcessorNumber == ProcessorNumber
 /***********************************************************************
 /
@@ -211,6 +212,13 @@ int grid::TransportPhotonPackages(int level, int finest_level,
     }
   }
 #endif
+  // KH 2022/10/2
+#ifdef HORIZON_MPI_TEST
+  // 0.12 = 3Mpc/25Mpc. 3 Mpc is the luminal region's size.
+  float LuminalCrossingTime = 0.12 * afloat * (VelocityUnits) /
+  (clight * RadiativeTransferPropagationSpeedFraction);  
+  float Hybird_CrossingTime = 0.0;
+#endif
 
 
   FLOAT EndTime;
@@ -237,6 +245,23 @@ int grid::TransportPhotonPackages(int level, int finest_level,
 	prev_type = PP->Type;
       }
     }
+    //KH 2022/10/2
+    // use PP->SourceCreationTime to set max travel distance
+    // for each radiation source
+#ifdef HORIZON_MPI_TEST
+    // 0.12 = 3Mpc/25Mpc. 3 Mpc is the luminal region's size.
+    Hybird_CrossingTime = 0.0;
+    if (RadiativeTransferHorizonStartTime >= 0.0) {
+      if ((PhotonTime - PP->SourceCreationTime ) > PFLOAT_EPSILON) {
+        Hybird_CrossingTime = max((PhotonTime - PP->SourceCreationTime), LuminalCrossingTime);
+        LightCrossingTime = min(Hybird_CrossingTime, LightCrossingTime);
+      }
+      else {
+        LightCrossingTime = PFLOAT_EPSILON;
+      }
+    }
+#endif
+
     if ((PP->CurrentTime) < EndTime) {
       retval = WalkPhotonPackage(&PP,
 				 &MoveToGrid, ParentGrid, CurrentGrid, Grids0, nGrids0,
