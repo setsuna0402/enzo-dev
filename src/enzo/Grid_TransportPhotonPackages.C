@@ -196,7 +196,7 @@ int grid::TransportPhotonPackages(int level, int finest_level,
   // KH 2022/9/17: testing
   // allow photon crosses the horizon in luminal region
   // the effect caused bu spectral distortion may appear.
-  
+/*  
 #ifdef HORIZON_TEST
   // 0.12 = 3Mpc/25Mpc. 3 Mpc is the luminal region's size.
   float LuminalCrossingTime = 0.12 * afloat * (VelocityUnits) /
@@ -212,6 +212,7 @@ int grid::TransportPhotonPackages(int level, int finest_level,
     }
   }
 #endif
+*/
   // KH 2022/10/2
 #ifdef HORIZON_MPI_TEST
   // 0.12 = 3Mpc/25Mpc. 3 Mpc is the luminal region's size.
