@@ -12,6 +12,8 @@ struct PhotonBuffer {
   int		level;
   FLOAT		SourcePosition[3];
   float		SourcePositionDiff;
+  // KH 2022/10/2
+  float     SourceCreationTime;     // When Radiation source is formed in code units
   int		SuperSourceID;
 };
 

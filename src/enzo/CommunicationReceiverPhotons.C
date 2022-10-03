@@ -208,6 +208,8 @@ int CommunicationReceiverPhotons(LevelHierarchyEntry *LevelArray[],
 	  RecvBuffer[i].buffer.SourcePosition[dim];
 
       NewPack->SourcePositionDiff = RecvBuffer[i].buffer.SourcePositionDiff;
+      // KH 2022/10/2
+      NewPack->SourceCreationTime	= RecvBuffer[i].buffer.SourceCreationTime;
 
       /* Search for the corresponding SuperSource, given a source ID
 	 on the tree */

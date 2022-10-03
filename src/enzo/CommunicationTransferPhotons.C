@@ -235,6 +235,11 @@ int CommunicationTransferPhotons(LevelHierarchyEntry *LevelArray[],
 	  Mover->PhotonPackage->SourcePosition[dim];
       SendList[ToProc][ToCount].buffer.SourcePositionDiff = 
 	Mover->PhotonPackage->SourcePositionDiff;
+      // KH 2022/10/2
+      SendList[ToProc][ToCount].buffer.SourceCreationTime   = 
+	Mover->PhotonPackage->SourceCreationTime;
+
+
       if (Mover->PhotonPackage->CurrentSource != NULL)
 	SendList[ToProc][ToCount].buffer.SuperSourceID =
 	  Mover->PhotonPackage->CurrentSource->LeafID;

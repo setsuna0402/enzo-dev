@@ -197,6 +197,8 @@ void ResetPhotonPackagePointer(void) {
   PhotonPackages->Radius          = 0.;        
   PhotonPackages->ipix            = 0;         
   PhotonPackages->level           = 0;        
+  //KH 2022/10/2
+  PhotonPackages->SourceCreationTime = 0.;        
   return;
 }
 

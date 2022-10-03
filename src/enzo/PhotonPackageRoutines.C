@@ -36,6 +36,8 @@ PhotonPackageEntry::PhotonPackageEntry(void)
   SourcePosition[1] = 0.0;
   SourcePosition[2] = 0.0;
   SourcePositionDiff = 0.0;
+  // KH 2022/10/2
+  SourceCreationTime = 0.0;
 }
 
 /**********************************************************************/

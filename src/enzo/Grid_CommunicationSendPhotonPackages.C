@@ -95,6 +95,8 @@ int grid::CommunicationSendPhotonPackages(grid *ToGrid, int ToProcessor,
       for (dim = 0; dim < GridRank; dim++)
 	buffer[index].SourcePosition[dim] = PP->SourcePosition[dim];
       buffer[index].SourcePositionDiff   = PP->SourcePositionDiff;
+      // KH 2022/10/2
+      buffer[index].SourceCreationTime   = PP->SourceCreationTime;
 
       if (PP->CurrentSource != NULL)
 	buffer[index].SuperSourceID = PP->CurrentSource->LeafID;
@@ -246,6 +248,8 @@ int grid::CommunicationSendPhotonPackages(grid *ToGrid, int ToProcessor,
       for (int dim = 0; dim < GridRank; dim++) 
 	NewPP->SourcePosition[dim]  = buffer[index].SourcePosition[dim];
       NewPP->SourcePositionDiff   = buffer[index].SourcePositionDiff;
+      // KH 2022/10/2
+      NewPP->SourceCreationTime	  = buffer[index].SourceCreationTime;
 
       if (NewPP->CurrentTime < 0 || NewPP->CurrentTime > 1e10) {
 	ENZO_VFAIL("CTPhotons[1][P%"ISYM"->P%"ISYM"]: "

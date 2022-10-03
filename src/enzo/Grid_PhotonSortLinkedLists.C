@@ -75,6 +75,8 @@ int grid::PhotonSortLinkedLists(void)
     for (dim = 0; dim < 3; dim++) {
       NewPack->SourcePosition[dim] = TempPP[count].SourcePosition[dim];
     }
+    // KH 2022/10/2
+    NewPack->SourceCreationTime = TempPP[count].SourceCreationTime;
     InsertPhotonAfter(PP, NewPack);
     PP = PP->NextPackage;
   }
@@ -123,6 +125,8 @@ int grid::PhotonSortLinkedLists(void)
     for (dim = 0; dim < 3; dim++) {
       NewPack->SourcePosition[dim] = TempPP[count].SourcePosition[dim];
     }
+    // KH 2022/10/2
+    NewPack->SourceCreationTime = TempPP[count].SourceCreationTime;
     InsertPhotonAfter(PP, NewPack);
     PP = PP->NextPackage;
   }
@@ -170,6 +174,8 @@ int grid::PhotonSortLinkedLists(void)
     for (dim = 0; dim < 3; dim++) {
       NewPack->SourcePosition[dim] = TempPP[count].SourcePosition[dim];
     }
+    // KH 2022/10/2
+    NewPack->SourceCreationTime = TempPP[count].SourceCreationTime;
     InsertPhotonAfter(PP, NewPack);
     PP = PP->NextPackage;
   }

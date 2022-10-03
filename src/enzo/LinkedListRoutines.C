@@ -58,6 +58,8 @@ PhotonPackageEntry *LinkedListToArray(PhotonPackageEntry *Node, int n)
     result[count].SourcePositionDiff = tmp->SourcePositionDiff;
     for (dim = 0; dim < 3; dim++)
       result[count].SourcePosition[dim] = tmp->SourcePosition[dim];
+    // KH 2022/10/2
+    result[count].SourceCreationTime = tmp->SourceCreationTime;
     count++;
     tmp = tmp->NextPackage;
   }

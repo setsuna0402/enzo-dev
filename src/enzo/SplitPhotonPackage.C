@@ -47,6 +47,8 @@ int SplitPhotonPackage(PhotonPackageEntry *PP)
       NewPack->SourcePosition[dim] = PP->SourcePosition[dim];
     NewPack->SourcePositionDiff  = PP->SourcePositionDiff;
     NewPack->CurrentSource   = PP->CurrentSource;
+    // KH 2022/10/2
+    NewPack->SourceCreationTime   = PP->SourceCreationTime;
 
     if ((NewPack->PreviousPackage->NextPackage != NewPack)) {
       ENZO_VFAIL("SplitPhotonPackage: Problem splitting %"ISYM" %"ISYM" %"ISYM" %"ISYM" %"ISYM" \n",

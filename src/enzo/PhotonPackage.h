@@ -36,6 +36,8 @@ public:
   int64_t ipix;                 // pixel in HEALPIX terminology
   FLOAT SourcePosition[3];      // Position where package was emitted
   float SourcePositionDiff;     // Radius at which it was radiated (0 = pt src)
+  // KH 2022/10/2
+  float SourceCreationTime;     // When Radiation source is formed in code units
 
   /* CONSTRUCTOR AND DESTRUCTOR */
 
