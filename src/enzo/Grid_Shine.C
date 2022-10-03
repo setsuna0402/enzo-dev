@@ -260,6 +260,10 @@ int grid::Shine(RadiationSourceEntry *RadiationSource)
 	}
 	NewPack->SourcePositionDiff = sqrt(NewPack->SourcePositionDiff);
 	NewPack->CurrentSource = RS->SuperSource;
+	//KH 2022/10/2
+    // Convent Radiation source birthtime to PhotonPackage
+    // SourceCreationTime  in code unit  
+    NewPack->SourceCreationTime = RS->CreationTime;
 
 	/* Consider the first super source with a leaf size greater
 	   than the cell size. */
