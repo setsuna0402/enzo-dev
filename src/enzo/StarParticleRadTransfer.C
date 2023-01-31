@@ -140,13 +140,23 @@ int StarParticleRadTransfer(LevelHierarchyEntry *LevelArray[], int level,
 #ifdef BEAMED_MBH
       // KH 5/4/2022: set the Orientation for MBH to {0.0, 0.0, 1.0}
       // John suggestion:modify RS->Type to Beamed
+      // KH 31/1/2023: Use BirthTime to set the direction
+      float birthtime_MBH = cstar->ReturnBirthTime();
       if (cstar->ReturnType() == MBH) {
         RadSource->Type           = Beamed;
         float norm = 0.0;    // for normalization
         RadSource->Orientation    = new float[3];
-        RadSource->Orientation[0] = 0.0;
-        RadSource->Orientation[1] = 0.0;
-        RadSource->Orientation[2] = 1.0;
+        if (birthtime_MBH < 12.2) {
+            RadSource->Orientation[0] = 0.0;
+            RadSource->Orientation[1] = 0.0;
+            RadSource->Orientation[2] = 1.0;
+        }
+        else {
+            RadSource->Orientation[0] = 0.0;
+            RadSource->Orientation[1] = 1.0;
+            RadSource->Orientation[2] = 1.0;
+ 
+        }
         for (int i = 0; i < MAX_DIMENSION; i++) {
             norm += RadSource->Orientation[i] * RadSource->Orientation[i];
         }
