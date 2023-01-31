@@ -51,7 +51,7 @@ int StarParticleRadTransfer(LevelHierarchyEntry *LevelArray[], int level,
   float XRayLuminosityFraction = 0.43;
   Star *cstar;
 
-  /* If sources exist, delete them */
+  /* If sources exist, delete them */ 
 
   DeleteGlobalRadiationSources();
 
@@ -146,7 +146,10 @@ int StarParticleRadTransfer(LevelHierarchyEntry *LevelArray[], int level,
         RadSource->Type           = Beamed;
         float norm = 0.0;    // for normalization
         RadSource->Orientation    = new float[3];
-        if (birthtime_MBH < 12.2) {
+        // KH 31/1/2023:
+        // birthtime_MBH = birthtime in input file + code time of the
+        // initial condition file (ie Music file) 
+        if (birthtime_MBH < 13.017) {
             RadSource->Orientation[0] = 0.0;
             RadSource->Orientation[1] = 0.0;
             RadSource->Orientation[2] = 1.0;
